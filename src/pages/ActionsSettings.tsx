@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Plus, Edit, Trash2, Save, X, ToggleLeft, ToggleRight, Copy, Search, Languages, Bot, Brain, Sparkles, Code, Terminal, GitBranch, Mail, Calculator, Lock, Key, Shuffle, Hash, Music, Scissors, QrCode, ExternalLink, Edit3, Bookmark, FileText, Calendar, Users, Folder, Archive, MessageSquare, RotateCcw, RefreshCw, RotateCcw as Reset, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Save, X, Copy, Search, Languages, Bot, Brain, Sparkles, Code, Terminal, GitBranch, Mail, Calculator, Lock, Key, Shuffle, Hash, Music, Scissors, QrCode, ExternalLink, Edit3, Bookmark, FileText, Calendar, Users, Folder, Archive, MessageSquare, RotateCcw, RefreshCw, RotateCcw as Reset, GripVertical } from 'lucide-react';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';

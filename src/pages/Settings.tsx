@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Monitor, Moon, Sun, Eye, Database, FileText, Download, Upload, Trash2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';

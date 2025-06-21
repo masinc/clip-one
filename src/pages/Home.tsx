@@ -34,7 +34,7 @@ interface ClipboardAction {
 }
 
 // GlobalActionをClipboardActionに変換する関数
-const convertToClipboardAction = (action: GlobalAction, navigate?: (path: string) => void): ClipboardAction => {
+const convertToClipboardAction = (action: GlobalAction): ClipboardAction => {
   const IconComponent = iconMap[action.icon] || Code;
   
   return {
@@ -47,7 +47,7 @@ const convertToClipboardAction = (action: GlobalAction, navigate?: (path: string
       return action.allowedContentTypes.includes(type) || 
              (action.allowedContentTypes.includes('url') && /^https?:\/\//.test(content));
     },
-    execute: (content: string, nav?: (path: string) => void, itemId?: number) => {
+    execute: (content: string) => {
       if (!action.enabled) return;
       
       switch (action.type) {
@@ -156,7 +156,7 @@ export default function Home() {
   const getClipboardActions = () => {
     return actions
       .filter(action => action.enabled)
-      .map(action => convertToClipboardAction(action, navigate));
+      .map(action => convertToClipboardAction(action));
   };
 
   // メニュー位置を調整する関数
