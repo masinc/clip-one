@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Plus, Edit, Trash2, Save, X, ToggleLeft, ToggleRight, Copy, Search, Languages, Bot, Brain, Sparkles, Code, Terminal, GitBranch, Mail, Calculator, Lock, Key, Shuffle, Hash, Music, Scissors, QrCode, ExternalLink, Edit3, Bookmark, FileText, Calendar, Users, Folder, Archive, MessageSquare, RotateCcw, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Save, X, ToggleLeft, ToggleRight, Copy, Search, Languages, Bot, Brain, Sparkles, Code, Terminal, GitBranch, Mail, Calculator, Lock, Key, Shuffle, Hash, Music, Scissors, QrCode, ExternalLink, Edit3, Bookmark, FileText, Calendar, Users, Folder, Archive, MessageSquare, RotateCcw, RefreshCw, RotateCcw as Reset } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const ActionsSettings = () => {
   const navigate = useNavigate();
-  const { actions, updateAction, deleteAction, addAction, toggleAction } = useActions();
+  const { actions, updateAction, deleteAction, addAction, toggleAction, resetToDefaults } = useActions();
 
   // コンテンツタイプ定義（クリップボードから取得可能なタイプに基づく）
   const contentTypes = [
@@ -37,6 +37,7 @@ const ActionsSettings = () => {
   const [editingAction, setEditingAction] = useState<GlobalAction | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [expandedActionId, setExpandedActionId] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleSaveAction = (action: GlobalAction) => {
     if (isCreating) {
@@ -57,6 +58,14 @@ const ActionsSettings = () => {
       setExpandedActionId(action.id);
       setEditingAction(action);
     }
+  };
+
+  const handleResetToDefaults = () => {
+    resetToDefaults();
+    setShowResetConfirm(false);
+    setEditingAction(null);
+    setExpandedActionId(null);
+    setIsCreating(false);
   };
 
   const ActionForm = ({ action, onSave, onCancel }: {
@@ -319,14 +328,25 @@ const ActionsSettings = () => {
                   コンテキストメニューに表示されるアクションの設定
                 </CardDescription>
               </div>
-              <Button
-                onClick={() => setIsCreating(true)}
-                disabled={!!editingAction || isCreating}
-                size="sm"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                追加
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowResetConfirm(true)}
+                  disabled={!!editingAction || isCreating}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Reset className="h-4 w-4 mr-2" />
+                  リセット
+                </Button>
+                <Button
+                  onClick={() => setIsCreating(true)}
+                  disabled={!!editingAction || isCreating}
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  追加
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -442,6 +462,46 @@ const ActionsSettings = () => {
             </ScrollArea>
           </CardContent>
         </Card>
+
+        {/* リセット確認ダイアログ */}
+        {showResetConfirm && (
+          <>
+            <div 
+              className="fixed inset-0 z-40 bg-black/50" 
+              onClick={() => setShowResetConfirm(false)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <Card className="w-full max-w-md">
+                <CardHeader>
+                  <CardTitle className="text-lg">設定をリセット</CardTitle>
+                  <CardDescription>
+                    すべてのアクション設定をデフォルトに戻します。<br/>
+                    カスタムアクションは削除され、この操作は元に戻せません。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowResetConfirm(false)}
+                      size="sm"
+                    >
+                      キャンセル
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleResetToDefaults}
+                      size="sm"
+                    >
+                      <Reset className="h-4 w-4 mr-2" />
+                      リセット実行
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

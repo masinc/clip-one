@@ -22,6 +22,7 @@ interface ActionsContextType {
   deleteAction: (id: string) => void;
   addAction: (action: GlobalAction) => void;
   toggleAction: (id: string) => void;
+  resetToDefaults: () => void;
 }
 
 const ActionsContext = createContext<ActionsContextType | undefined>(undefined);
@@ -286,6 +287,10 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const resetToDefaults = () => {
+    setActions([...defaultActions]);
+  };
+
   return (
     <ActionsContext.Provider value={{
       actions,
@@ -293,7 +298,8 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
       updateAction,
       deleteAction,
       addAction,
-      toggleAction
+      toggleAction,
+      resetToDefaults
     }}>
       {children}
     </ActionsContext.Provider>
