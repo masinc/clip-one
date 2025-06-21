@@ -99,7 +99,7 @@ export default function Home() {
               </DropdownMenu>
             </div>
           </div>
-          <Input placeholder="履歴を検索..." />
+          <Input placeholder="履歴を検索..." className="bg-white" />
         </div>
       </div>
 
