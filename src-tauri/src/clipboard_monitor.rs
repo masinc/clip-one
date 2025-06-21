@@ -190,9 +190,9 @@ pub async fn stop_clipboard_monitoring_service(
     Ok(())
 }
 
-/// クリップボード監視状態を取得
+/// クリップボード監視状態を取得（サービス版）
 #[tauri::command]
-pub async fn get_clipboard_monitoring_status() -> Result<bool, String> {
+pub async fn get_clipboard_monitoring_service_status() -> Result<bool, String> {
     // TODO: 実際の監視状態を返す
     Ok(false)
 }

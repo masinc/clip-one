@@ -6,33 +6,55 @@ use tokio::sync::Mutex;
 /// クリップボードの現在のテキストを取得
 #[tauri::command]
 pub async fn get_clipboard_text() -> Result<String, String> {
-    // tauri-plugin-clipboardを使ったクリップボード読み取り
-    // 実際の実装はプラグインのAPIドキュメントに従って調整
-    Ok("Clipboard read functionality to be implemented".to_string())
+    // この部分はフロントエンドでJavaScript APIを使用する必要がある
+    // Rustサイドではプレースホルダーとして実装
+    Ok("JavaScript APIを使用してください".to_string())
 }
 
 /// クリップボードにテキストを設定
 #[tauri::command]
 pub async fn set_clipboard_text(text: String) -> Result<(), String> {
-    // tauri-plugin-clipboardを使ったクリップボード書き込み
-    // 実際の実装はプラグインのAPIドキュメントに従って調整
-    println!("Setting clipboard text: {}", text);
+    // この部分はフロントエンドでJavaScript APIを使用する必要がある
+    // Rustサイドではプレースホルダーとして実装
+    println!("テキスト設定（JavaScript APIを使用）: {}", text);
     Ok(())
 }
 
 /// クリップボード監視を開始
 #[tauri::command]
 pub async fn start_clipboard_monitoring() -> Result<(), String> {
-    // 基本的なクリップボード監視開始（プレースホルダー）
-    println!("クリップボード監視を開始しました");
+    // この部分はフロントエンドでJavaScript APIを使用する必要がある
+    println!("クリップボード監視開始（JavaScript APIを使用）");
     Ok(())
 }
 
 /// クリップボード監視を停止
 #[tauri::command]
 pub async fn stop_clipboard_monitoring() -> Result<(), String> {
-    // 基本的なクリップボード監視停止（プレースホルダー）
-    println!("クリップボード監視を停止しました");
+    // この部分はフロントエンドでJavaScript APIを使用する必要がある
+    println!("クリップボード監視停止（JavaScript APIを使用）");
+    Ok(())
+}
+
+/// クリップボード監視状態を取得
+#[tauri::command]
+pub async fn get_clipboard_monitoring_status() -> Result<bool, String> {
+    // この部分はフロントエンドでJavaScript APIを使用する必要がある
+    Ok(false)
+}
+
+/// テキストの存在をチェック
+#[tauri::command]
+pub async fn has_clipboard_text() -> Result<bool, String> {
+    // この部分はフロントエンドでJavaScript APIを使用する必要がある
+    Ok(true)
+}
+
+/// クリップボードをクリア
+#[tauri::command]
+pub async fn clear_clipboard() -> Result<(), String> {
+    // この部分はフロントエンドでJavaScript APIを使用する必要がある
+    println!("クリップボードクリア（JavaScript APIを使用）");
     Ok(())
 }
 

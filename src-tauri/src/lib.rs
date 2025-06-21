@@ -41,13 +41,16 @@ pub fn run() {
             set_clipboard_text,
             start_clipboard_monitoring,
             stop_clipboard_monitoring,
+            get_clipboard_monitoring_status,
+            has_clipboard_text,
+            clear_clipboard,
             save_clipboard_item,
             check_duplicate_content,
             
             // クリップボード監視サービス
             start_clipboard_monitoring_service,
             stop_clipboard_monitoring_service,
-            get_clipboard_monitoring_status,
+            get_clipboard_monitoring_service_status,
             
             // 履歴管理
             get_clipboard_history,
