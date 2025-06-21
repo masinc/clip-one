@@ -440,11 +440,15 @@ export default function Home() {
     visible: boolean;
     x: number;
     y: number;
+    originalX: number;
+    originalY: number;
     item: typeof mockClipboardItems[0] | null;
   }>({
     visible: false,
     x: 0,
     y: 0,
+    originalX: 0,
+    originalY: 0,
     item: null
   });
   const [searchQuery, setSearchQuery] = useState('');
@@ -506,7 +510,7 @@ export default function Home() {
     
     // 既にメニューが開いている場合は一旦閉じて、新しい位置で開く
     if (contextMenu.visible) {
-      setContextMenu({ visible: false, x: 0, y: 0, item: null });
+      setContextMenu({ visible: false, x: 0, y: 0, originalX: 0, originalY: 0, item: null });
       // 少し遅延させて新しいメニューを開く
       setTimeout(() => {
         const { x, y } = calculateMenuPosition(e.clientX, e.clientY);
@@ -514,6 +518,8 @@ export default function Home() {
           visible: true,
           x,
           y,
+          originalX: e.clientX,
+          originalY: e.clientY,
           item
         });
       }, 50);
@@ -523,6 +529,8 @@ export default function Home() {
         visible: true,
         x: e.clientX,
         y: e.clientY,
+        originalX: e.clientX,
+        originalY: e.clientY,
         item
       });
       
@@ -544,6 +552,22 @@ export default function Home() {
     setSearchQuery('');
     setSelectedActionIndex(0);
     setShowAllActions(false);
+  };
+
+  // 「その他のアクション」をクリックした時の処理
+  const handleShowAllActions = () => {
+    setShowAllActions(true);
+    // メニューのサイズが変わるので位置を再計算（元のクリック位置を使用）
+    setTimeout(() => {
+      if (contextMenu.visible && contextMenu.item) {
+        const { x, y } = calculateMenuPosition(contextMenu.originalX, contextMenu.originalY);
+        setContextMenu(prev => ({
+          ...prev,
+          x,
+          y
+        }));
+      }
+    }, 0);
   };
 
   // アクションを実行
@@ -746,7 +770,7 @@ export default function Home() {
                     {hasMore && !searchQuery && !showAllActions && (
                       <button
                         className="w-full text-left px-2 py-1.5 hover:bg-accent hover:text-accent-foreground text-xs text-muted-foreground"
-                        onClick={() => setShowAllActions(true)}
+                        onClick={handleShowAllActions}
                       >
                         その他のアクション...
                       </button>
