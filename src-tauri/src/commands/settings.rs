@@ -70,12 +70,8 @@ impl AppSettings {
     /// 設定ファイルのパスを取得
     fn get_settings_path() -> Result<PathBuf> {
         // データベースと同じディレクトリを使用
-        let exe_dir = std::env::current_exe()?
-            .parent()
-            .ok_or_else(|| anyhow::anyhow!("実行ファイルの親ディレクトリが取得できません"))?
-            .to_path_buf();
-        
-        let app_dir = exe_dir.join("data");
+        let current_dir = std::env::current_dir()?;
+        let app_dir = current_dir.join("data");
         Ok(app_dir.join("settings.json"))
     }
 

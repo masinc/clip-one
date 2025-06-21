@@ -27,12 +27,17 @@ impl Database {
     pub async fn new() -> Result<Self> {
         let db_path = Self::get_database_path().await?;
         
+        println!("データベースパス: {}", db_path.display());
+        
         // データベースディレクトリを作成
         if let Some(parent) = db_path.parent() {
+            println!("ディレクトリ作成: {}", parent.display());
             tokio::fs::create_dir_all(parent).await?;
         }
 
-        let database_url = format!("sqlite://{}", db_path.display());
+        // SQLiteはファイルが存在しなくても自動作成するので、パス形式を修正
+        let database_url = format!("sqlite:{}", db_path.display());
+        println!("データベースURL: {}", database_url);
         
         let pool = SqlitePool::connect(&database_url).await?;
         
@@ -45,13 +50,9 @@ impl Database {
 
     /// データベースファイルのパスを取得
     async fn get_database_path() -> Result<PathBuf> {
-        // Tauriの推奨方法: 実行ファイルと同じディレクトリにdataフォルダを作成
-        let exe_dir = std::env::current_exe()?
-            .parent()
-            .ok_or_else(|| anyhow::anyhow!("実行ファイルの親ディレクトリが取得できません"))?
-            .to_path_buf();
-        
-        let app_dir = exe_dir.join("data");
+        // 現在の作業ディレクトリを使用（開発時により安全）
+        let current_dir = std::env::current_dir()?;
+        let app_dir = current_dir.join("data");
         Ok(app_dir.join("clipone.db"))
     }
 
