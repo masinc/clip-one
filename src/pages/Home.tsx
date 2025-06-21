@@ -8,7 +8,64 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Copy, Clock, Hash, MoreHorizontal, Settings, Download, Upload, Trash2, Info, Eye, Palette } from "lucide-react";
+import { Copy, Clock, Hash, MoreHorizontal, Settings, Download, Upload, Trash2, Info, Eye, Palette, Search, Languages, ExternalLink, Edit3 } from "lucide-react";
+import { useState } from "react";
+
+// アクション定義
+interface ClipboardAction {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  execute: (content: string) => void;
+  condition?: (content: string, type: string) => boolean;
+}
+
+const clipboardActions: ClipboardAction[] = [
+  {
+    id: 'copy',
+    label: 'クリップボードにコピー',
+    icon: Copy,
+    execute: (content) => {
+      navigator.clipboard.writeText(content);
+      console.log('Copied to clipboard:', content);
+    }
+  },
+  {
+    id: 'search',
+    label: 'Web検索',
+    icon: Search,
+    execute: (content) => {
+      const query = content.length > 100 ? content.substring(0, 100) + '...' : content;
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
+    }
+  },
+  {
+    id: 'translate',
+    label: '翻訳',
+    icon: Languages,
+    execute: (content) => {
+      window.open(`https://translate.google.com/?text=${encodeURIComponent(content)}`, '_blank');
+    }
+  },
+  {
+    id: 'open-url',
+    label: 'URLを開く',
+    icon: ExternalLink,
+    execute: (content) => {
+      window.open(content, '_blank');
+    },
+    condition: (content, type) => type === 'url' || /^https?:\/\//.test(content)
+  },
+  {
+    id: 'edit',
+    label: '編集',
+    icon: Edit3,
+    execute: (content) => {
+      console.log('Edit content:', content);
+      // TODO: 編集モーダルを開く
+    }
+  }
+];
 
 // モックデータ
 const mockClipboardItems = [
@@ -50,6 +107,47 @@ function getTypeIcon(type: string) {
 }
 
 export default function Home() {
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    item: typeof mockClipboardItems[0] | null;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    item: null
+  });
+
+  // コンテキストメニューを開く
+  const handleContextMenu = (e: React.MouseEvent, item: typeof mockClipboardItems[0]) => {
+    e.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      item
+    });
+  };
+
+  // コンテキストメニューを閉じる
+  const closeContextMenu = () => {
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  // アクションを実行
+  const executeAction = (action: ClipboardAction, item: typeof mockClipboardItems[0]) => {
+    action.execute(item.content);
+    closeContextMenu();
+  };
+
+  // アイテムに対して利用可能なアクションを取得
+  const getAvailableActions = (item: typeof mockClipboardItems[0]) => {
+    return clipboardActions.filter(action => 
+      !action.condition || action.condition(item.content, item.type)
+    );
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* ヘッダー */}
@@ -110,7 +208,11 @@ export default function Home() {
         <ScrollArea className="h-full">
           <div className="p-2">
             {mockClipboardItems.map((item, index) => (
-              <Card key={item.id} className="mb-1 p-3 hover:bg-gray-50 cursor-pointer transition-colors">
+              <Card 
+                key={item.id} 
+                className="mb-1 p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                onContextMenu={(e) => handleContextMenu(e, item)}
+              >
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 mt-0.5">
                     <span className="text-xs">{getTypeIcon(item.type)}</span>
@@ -145,6 +247,37 @@ export default function Home() {
           </div>
         </ScrollArea>
       </div>
+
+      {/* コンテキストメニュー */}
+      {contextMenu.visible && contextMenu.item && (
+        <>
+          {/* オーバーレイ */}
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={closeContextMenu}
+          />
+          
+          {/* メニュー */}
+          <div 
+            className="fixed z-50 bg-white border rounded-md shadow-lg py-1 min-w-48"
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.y,
+            }}
+          >
+            {getAvailableActions(contextMenu.item).map((action) => (
+              <button
+                key={action.id}
+                className="w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-2 text-sm"
+                onClick={() => executeAction(action, contextMenu.item!)}
+              >
+                <action.icon className="h-4 w-4" />
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* フッター */}
       <div className="flex-shrink-0 border-t bg-card p-2">
