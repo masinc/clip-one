@@ -35,8 +35,12 @@ impl Database {
             tokio::fs::create_dir_all(parent).await?;
         }
 
-        // SQLiteはファイルが存在しなくても自動作成するので、パス形式を修正
-        let database_url = format!("sqlite:{}", db_path.display());
+        // WindowsでSQLiteの絶対パスを使用する場合は sqlite:/// が必要
+        let database_url = if cfg!(windows) {
+            format!("sqlite:///{}", db_path.display().to_string().replace('\\', "/"))
+        } else {
+            format!("sqlite://{}", db_path.display())
+        };
         println!("データベースURL: {}", database_url);
         
         let pool = SqlitePool::connect(&database_url).await?;
