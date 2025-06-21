@@ -12,9 +12,12 @@
   "app": {
     "windows": [
       {
-        "title": "clip-one",
-        "width": 800,
-        "height": 600
+        "title": "ClipOne",
+        "width": 500,
+        "height": 800,
+        "resizable": true,
+        "minimizable": true,
+        "maximizable": true
       }
     ],
     "security": {
