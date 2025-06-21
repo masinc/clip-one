@@ -25,7 +25,7 @@ pub struct Database {
 impl Database {
     /// データベース接続を初期化
     pub async fn new() -> Result<Self> {
-        let db_path = Self::get_database_path()?;
+        let db_path = Self::get_database_path().await?;
         
         // データベースディレクトリを作成
         if let Some(parent) = db_path.parent() {
@@ -44,11 +44,14 @@ impl Database {
     }
 
     /// データベースファイルのパスを取得
-    fn get_database_path() -> Result<PathBuf> {
-        let app_dir = dirs::data_dir()
-            .ok_or_else(|| anyhow::anyhow!("データディレクトリが見つかりません"))?
-            .join("clipone");
+    async fn get_database_path() -> Result<PathBuf> {
+        // Tauriの推奨方法: 実行ファイルと同じディレクトリにdataフォルダを作成
+        let exe_dir = std::env::current_exe()?
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("実行ファイルの親ディレクトリが取得できません"))?
+            .to_path_buf();
         
+        let app_dir = exe_dir.join("data");
         Ok(app_dir.join("clipone.db"))
     }
 
