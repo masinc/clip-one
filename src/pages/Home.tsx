@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Copy, Clock, Hash, MoreHorizontal, Settings, Info, Search, Languages, ExternalLink, Edit3, Bot, QrCode, FileText, Code, Mail, Bookmark, Calculator, Music, Brain, Sparkles, MessageSquare, GitBranch, Terminal, Lock, Key, Shuffle, RotateCcw, RefreshCw, Calendar, Users, Folder, Archive, Scissors } from "lucide-react";
+import { Copy, Clock, Hash, MoreHorizontal, Settings, Info, Search, Languages, ExternalLink, Edit3, Bot, QrCode, FileText, Code, Mail, Bookmark, Calculator, Music, Brain, Sparkles, MessageSquare, GitBranch, Terminal, Lock, Key, Shuffle, RotateCcw, RefreshCw, Calendar, Users, Folder, Archive, Scissors, Cog, Sliders } from "lucide-react";
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
 
@@ -18,13 +18,14 @@ interface ClipboardAction {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  execute: (content: string) => void;
+  execute: (content: string, navigate?: (path: string) => void, itemId?: number) => void;
   condition?: (content: string, type: string) => boolean;
   priority?: number; // 数値が小さいほど優先度が高い
   keywords?: string[]; // 検索用キーワード
 }
 
 const clipboardActions: ClipboardAction[] = [
+
   // 基本アクション (優先度 1-3)
   {
     id: 'copy',
@@ -538,7 +539,7 @@ export default function Home() {
 
   // アクションを実行
   const executeAction = (action: ClipboardAction, item: typeof mockClipboardItems[0]) => {
-    action.execute(item.content);
+    action.execute(item.content, navigate, item.id);
     closeContextMenu();
   };
 
@@ -611,6 +612,10 @@ export default function Home() {
                   <DropdownMenuItem onClick={() => navigate('/settings')}>
                     <Settings className="h-4 w-4" />
                     設定
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/actions-settings')}>
+                    <Sliders className="h-4 w-4" />
+                    アクション設定
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
