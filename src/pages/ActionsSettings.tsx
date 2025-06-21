@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Plus, Edit, Trash2, Save, X, ToggleLeft, ToggleRight, Copy, Search, Languages, Bot, Brain, Sparkles, Code, Terminal, GitBranch, Mail, Calculator, Lock, Key, Shuffle, Hash, Music, Scissors, QrCode, ExternalLink, Edit3, Bookmark, FileText, Calendar, Users, Folder, Archive, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Save, X, ToggleLeft, ToggleRight, Copy, Search, Languages, Bot, Brain, Sparkles, Code, Terminal, GitBranch, Mail, Calculator, Lock, Key, Shuffle, Hash, Music, Scissors, QrCode, ExternalLink, Edit3, Bookmark, FileText, Calendar, Users, Folder, Archive, MessageSquare, RotateCcw, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,63 +9,41 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useActions, GlobalAction } from '@/contexts/ActionsContext';
 
-// アクション型定義
-interface GlobalAction {
-  id: string;
-  label: string;
-  command?: string;
-  description?: string;
-  icon: string;
-  enabled: boolean;
-  priority: number;
-  keywords: string[];
-  isCustom: boolean;
-  type: 'url' | 'command' | 'code' | 'built-in';
-}
 
 // アイコンマッピング
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Copy, Search, Languages, Bot, Brain, Sparkles, Code, Terminal, GitBranch, 
   Mail, Calculator, Lock, Key, Shuffle, Hash, Music, Scissors, QrCode, 
   ExternalLink, Edit3, Bookmark, FileText, Calendar, Users, Folder, 
-  Archive, MessageSquare
+  Archive, MessageSquare, RotateCcw, RefreshCw
 };
 
 const ActionsSettings = () => {
   const navigate = useNavigate();
-  
-  // デフォルトアクション（組み込み）
-  const defaultActions: GlobalAction[] = [
-    {
-      id: 'copy',
-      label: 'クリップボードにコピー',
-      icon: 'Copy',
-      enabled: true,
-      priority: 1,
-      keywords: ['copy', 'コピー', 'clipboard'],
-      isCustom: false,
-      type: 'built-in'
-    }
+  const { actions, updateAction, deleteAction, addAction, toggleAction } = useActions();
+
+  // コンテンツタイプ定義（クリップボードから取得可能なタイプに基づく）
+  const contentTypes = [
+    { value: 'text', label: 'テキスト', description: '通常のテキストデータ' },
+    { value: 'url', label: 'URL', description: 'URLとして認識されたテキスト' },
+    { value: 'html', label: 'HTML', description: 'HTMLフォーマットのデータ' },
+    { value: 'image', label: '画像', description: '画像データ' },
+    { value: 'files', label: 'ファイル', description: 'ファイルパスのリスト' }
   ];
 
-  const [actions, setActions] = useState<GlobalAction[]>(defaultActions);
   const [editingAction, setEditingAction] = useState<GlobalAction | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [expandedActionId, setExpandedActionId] = useState<string | null>(null);
 
-  const handleToggleAction = (id: string) => {
-    setActions(actions.map(action => 
-      action.id === id ? { ...action, enabled: !action.enabled } : action
-    ));
-  };
-
   const handleSaveAction = (action: GlobalAction) => {
     if (isCreating) {
-      setActions([...actions, { ...action, id: Date.now().toString() }]);
+      addAction({ ...action, id: Date.now().toString() });
       setIsCreating(false);
     } else {
-      setActions(actions.map(a => a.id === action.id ? action : a));
+      updateAction(action);
       setExpandedActionId(null);
     }
     setEditingAction(null);
@@ -79,10 +57,6 @@ const ActionsSettings = () => {
       setExpandedActionId(action.id);
       setEditingAction(action);
     }
-  };
-
-  const handleDeleteAction = (id: string) => {
-    setActions(actions.filter(a => a.id !== id));
   };
 
   const ActionForm = ({ action, onSave, onCancel }: {
@@ -213,6 +187,67 @@ const ActionsSettings = () => {
             />
           </div>
           
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>対応コンテンツタイプ</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData({
+                    ...formData,
+                    allowedContentTypes: contentTypes.map(ct => ct.value)
+                  })}
+                  className="h-7 text-xs"
+                >
+                  全て選択
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData({
+                    ...formData,
+                    allowedContentTypes: []
+                  })}
+                  className="h-7 text-xs"
+                >
+                  選択解除
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {contentTypes.map((contentType) => (
+                <div key={contentType.value} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={contentType.value}
+                    checked={formData.allowedContentTypes.includes(contentType.value)}
+                    onCheckedChange={(checked: boolean) => {
+                      if (checked) {
+                        setFormData({
+                          ...formData,
+                          allowedContentTypes: [...formData.allowedContentTypes, contentType.value]
+                        });
+                      } else {
+                        setFormData({
+                          ...formData,
+                          allowedContentTypes: formData.allowedContentTypes.filter(t => t !== contentType.value)
+                        });
+                      }
+                    }}
+                  />
+                  <Label htmlFor={contentType.value} className="text-sm font-normal">
+                    <div>
+                      <div className="font-medium">{contentType.label}</div>
+                      <div className="text-xs text-muted-foreground">{contentType.description}</div>
+                    </div>
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+          
           <div className="flex gap-2">
             <Button 
               onClick={() => onSave(formData)}
@@ -264,7 +299,8 @@ const ActionsSettings = () => {
               priority: 3,
               keywords: [],
               isCustom: true,
-              type: 'url'
+              type: 'url',
+              allowedContentTypes: ['text', 'url', 'html', 'files'] // デフォルトは画像以外
             }}
             onSave={handleSaveAction}
             onCancel={() => {
@@ -294,7 +330,7 @@ const ActionsSettings = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-96">
+            <ScrollArea className="h-[calc(100vh-250px)]">
               <div className="space-y-3">
                 {actions
                   .sort((a, b) => a.priority - b.priority)
@@ -329,6 +365,17 @@ const ActionsSettings = () => {
                                   </span>
                                 )}
                               </div>
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                <span className="text-xs text-muted-foreground">対応タイプ:</span>
+                                {action.allowedContentTypes.map(type => {
+                                  const contentType = contentTypes.find(ct => ct.value === type);
+                                  return (
+                                    <span key={type} className="text-xs bg-accent px-1.5 py-0.5 rounded text-accent-foreground">
+                                      {contentType?.label || type}
+                                    </span>
+                                  );
+                                })}
+                              </div>
                               {action.description && (
                                 <div className="text-xs text-muted-foreground mb-1">
                                   {action.description}
@@ -347,7 +394,7 @@ const ActionsSettings = () => {
                           <div className="flex items-center gap-2">
                             <Switch
                               checked={action.enabled}
-                              onCheckedChange={() => handleToggleAction(action.id)}
+                              onCheckedChange={() => toggleAction(action.id)}
                             />
                             {action.isCustom && (
                               <>
@@ -362,7 +409,7 @@ const ActionsSettings = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleDeleteAction(action.id)}
+                                  onClick={() => deleteAction(action.id)}
                                   disabled={isExpanded}
                                   className="h-8 w-8 text-red-600 hover:text-red-700"
                                 >
@@ -393,35 +440,6 @@ const ActionsSettings = () => {
                   })}
               </div>
             </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* 使用例 */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-sm">コマンド例</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="text-xs space-y-2">
-              <div>
-                <div className="font-medium mb-1">URL例:</div>
-                <div className="bg-muted p-2 rounded font-mono">https://translate.google.com/?text=CONTENT</div>
-                <div className="bg-muted p-2 rounded font-mono">https://www.google.com/search?q=CONTENT</div>
-              </div>
-              <div>
-                <div className="font-medium mb-1">コマンド例:</div>
-                <div className="bg-muted p-2 rounded font-mono">echo "CONTENT" | pbcopy</div>
-                <div className="bg-muted p-2 rounded font-mono">./scripts/process.sh "CONTENT"</div>
-              </div>
-              <div>
-                <div className="font-medium mb-1">コード例:</div>
-                <div className="bg-muted p-2 rounded font-mono">navigator.clipboard.writeText(CONTENT.toUpperCase())</div>
-                <div className="bg-muted p-2 rounded font-mono">alert('文字数: ' + CONTENT.length)</div>
-              </div>
-              <div className="text-muted-foreground pt-2">
-                ※ CONTENTはクリップボードの内容に置き換えられます
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
