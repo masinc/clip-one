@@ -149,7 +149,7 @@ export default function Home() {
     item: null
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedActionIndex, setSelectedActionIndex] = useState(0);
+  const [selectedActionIndex, setSelectedActionIndex] = useState(-1);
   const [showAllActions, setShowAllActions] = useState(false);
 
   // コンテキストからアクションを取得して変換する関数
@@ -243,7 +243,7 @@ export default function Home() {
   const closeContextMenu = () => {
     setContextMenu(prev => ({ ...prev, visible: false }));
     setSearchQuery('');
-    setSelectedActionIndex(0);
+    setSelectedActionIndex(-1);
     setShowAllActions(false);
   };
 
@@ -424,7 +424,7 @@ export default function Home() {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    setSelectedActionIndex(0);
+                    setSelectedActionIndex(-1);
                   }}
                   className="h-6 text-xs border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 m-0 p-0 flex-1 text-foreground"
                   style={{ backgroundColor: 'transparent' }}
