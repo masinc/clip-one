@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Plus, Edit, Trash2, Save, X, ToggleLeft, ToggleRight, Copy, Search, Languages, Bot, Brain, Sparkles, Code, Terminal, GitBranch, Mail, Calculator, Lock, Key, Shuffle, Hash, Music, Scissors, QrCode, ExternalLink, Edit3, Bookmark, FileText, Calendar, Users, Folder, Archive, MessageSquare, RotateCcw, RefreshCw, RotateCcw as Reset } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Save, X, ToggleLeft, ToggleRight, Copy, Search, Languages, Bot, Brain, Sparkles, Code, Terminal, GitBranch, Mail, Calculator, Lock, Key, Shuffle, Hash, Music, Scissors, QrCode, ExternalLink, Edit3, Bookmark, FileText, Calendar, Users, Folder, Archive, MessageSquare, RotateCcw, RefreshCw, RotateCcw as Reset, GripVertical } from 'lucide-react';
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,7 +27,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const ActionsSettings = () => {
   const navigate = useNavigate();
-  const { actions, updateAction, deleteAction, addAction, toggleAction, resetToDefaults } = useActions();
+  const { actions, updateAction, deleteAction, addAction, toggleAction, resetToDefaults, reorderActions } = useActions();
 
   // コンテンツタイプ定義（クリップボードから取得可能なタイプに基づく）
   const contentTypes = [
@@ -41,7 +45,9 @@ const ActionsSettings = () => {
 
   const handleSaveAction = (action: GlobalAction) => {
     if (isCreating) {
-      addAction({ ...action, id: Date.now().toString() });
+      // 新規作成時は最後の優先度に設定
+      const maxPriority = Math.max(...actions.map(a => a.priority), 0);
+      addAction({ ...action, id: Date.now().toString(), priority: maxPriority + 1 });
       setIsCreating(false);
     } else {
       updateAction(action);
@@ -66,6 +72,146 @@ const ActionsSettings = () => {
     setEditingAction(null);
     setExpandedActionId(null);
     setIsCreating(false);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      reorderActions(active.id as string, over.id as string);
+    }
+  };
+
+  const SortableActionItem = ({ action }: { action: GlobalAction }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: action.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    const IconComponent = iconMap[action.icon] || Code;
+    const isExpanded = expandedActionId === action.id;
+
+    return (
+      <div 
+        ref={setNodeRef} 
+        style={style} 
+        className={`border rounded-md ${isDragging ? 'shadow-lg' : ''}`}
+      >
+        <div className="flex items-center justify-between p-3 hover:bg-accent/50 transition-colors">
+          <div className="flex items-center gap-3">
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing p-1 hover:bg-accent rounded"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <IconComponent className="h-5 w-5 text-muted-foreground" />
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-medium text-sm">{action.label}</span>
+                <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">
+                  優先度: {action.priority}
+                </span>
+                <span className={`text-xs px-2 py-0.5 rounded text-white ${
+                  action.type === 'url' ? 'bg-blue-500' :
+                  action.type === 'command' ? 'bg-green-500' :
+                  action.type === 'code' ? 'bg-purple-500' :
+                  'bg-gray-500'
+                }`}>
+                  {action.type === 'url' ? 'URL' :
+                   action.type === 'command' ? 'コマンド' :
+                   action.type === 'code' ? 'コード' :
+                   '組み込み'}
+                </span>
+                {action.isCustom && (
+                  <span className="text-xs bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded text-blue-700 dark:text-blue-300">
+                    カスタム
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1 mb-2">
+                <span className="text-xs text-muted-foreground">対応タイプ:</span>
+                {action.allowedContentTypes.map(type => {
+                  const contentType = contentTypes.find(ct => ct.value === type);
+                  return (
+                    <span key={type} className="text-xs bg-accent px-1.5 py-0.5 rounded text-accent-foreground">
+                      {contentType?.label || type}
+                    </span>
+                  );
+                })}
+              </div>
+              {action.description && (
+                <div className="text-xs text-muted-foreground mb-1">
+                  {action.description}
+                </div>
+              )}
+              {action.command && (
+                <div className="text-xs font-mono text-muted-foreground">
+                  {action.command.length > 60 
+                    ? action.command.substring(0, 60) + '...'
+                    : action.command
+                  }
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={action.enabled}
+              onCheckedChange={() => toggleAction(action.id)}
+            />
+            {action.isCustom && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleEditAction(action)}
+                  className="h-8 w-8"
+                >
+                  <Edit className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => deleteAction(action.id)}
+                  disabled={isExpanded}
+                  className="h-8 w-8 text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+        
+        {/* 編集フォーム */}
+        {isExpanded && editingAction && editingAction.id === action.id && (
+          <div className="border-t bg-muted/30">
+            <div className="p-4">
+              <ActionForm
+                action={editingAction}
+                onSave={handleSaveAction}
+                onCancel={() => {
+                  setExpandedActionId(null);
+                  setEditingAction(null);
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const ActionForm = ({ action, onSave, onCancel }: {
@@ -133,25 +279,6 @@ const ActionsSettings = () => {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="アクションの説明"
             />
-          </div>
-          
-          <div className="space-y-2">
-            <Label>優先度</Label>
-            <Select 
-              value={formData.priority.toString()} 
-              onValueChange={(value) => setFormData({ ...formData, priority: parseInt(value) })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">1 (最高)</SelectItem>
-                <SelectItem value="2">2 (高)</SelectItem>
-                <SelectItem value="3">3 (中)</SelectItem>
-                <SelectItem value="4">4 (低)</SelectItem>
-                <SelectItem value="5">5 (最低)</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           
           <div className="space-y-2">
@@ -305,7 +432,7 @@ const ActionsSettings = () => {
               description: '',
               icon: 'Code',
               enabled: true,
-              priority: 3,
+              priority: Math.max(...actions.map(a => a.priority), 0) + 1,
               keywords: [],
               isCustom: true,
               type: 'url',
@@ -351,114 +478,24 @@ const ActionsSettings = () => {
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[calc(100vh-250px)]">
-              <div className="space-y-3">
-                {actions
-                  .sort((a, b) => a.priority - b.priority)
-                  .map((action) => {
-                    const IconComponent = iconMap[action.icon] || Code;
-                    const isExpanded = expandedActionId === action.id;
-                    return (
-                      <div key={action.id} className="border rounded-md">
-                        <div className="flex items-center justify-between p-3 hover:bg-accent/50 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <IconComponent className="h-5 w-5 text-muted-foreground" />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium text-sm">{action.label}</span>
-                                <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">
-                                  優先度: {action.priority}
-                                </span>
-                                <span className={`text-xs px-2 py-0.5 rounded text-white ${
-                                  action.type === 'url' ? 'bg-blue-500' :
-                                  action.type === 'command' ? 'bg-green-500' :
-                                  action.type === 'code' ? 'bg-purple-500' :
-                                  'bg-gray-500'
-                                }`}>
-                                  {action.type === 'url' ? 'URL' :
-                                   action.type === 'command' ? 'コマンド' :
-                                   action.type === 'code' ? 'コード' :
-                                   '組み込み'}
-                                </span>
-                                {action.isCustom && (
-                                  <span className="text-xs bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded text-blue-700 dark:text-blue-300">
-                                    カスタム
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap gap-1 mb-2">
-                                <span className="text-xs text-muted-foreground">対応タイプ:</span>
-                                {action.allowedContentTypes.map(type => {
-                                  const contentType = contentTypes.find(ct => ct.value === type);
-                                  return (
-                                    <span key={type} className="text-xs bg-accent px-1.5 py-0.5 rounded text-accent-foreground">
-                                      {contentType?.label || type}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                              {action.description && (
-                                <div className="text-xs text-muted-foreground mb-1">
-                                  {action.description}
-                                </div>
-                              )}
-                              {action.command && (
-                                <div className="text-xs font-mono text-muted-foreground">
-                                  {action.command.length > 60 
-                                    ? action.command.substring(0, 60) + '...'
-                                    : action.command
-                                  }
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={action.enabled}
-                              onCheckedChange={() => toggleAction(action.id)}
-                            />
-                            {action.isCustom && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEditAction(action)}
-                                  className="h-8 w-8"
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => deleteAction(action.id)}
-                                  disabled={isExpanded}
-                                  className="h-8 w-8 text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* 編集フォーム */}
-                        {isExpanded && editingAction && editingAction.id === action.id && (
-                          <div className="border-t bg-muted/30">
-                            <div className="p-4">
-                              <ActionForm
-                                action={editingAction}
-                                onSave={handleSaveAction}
-                                onCancel={() => {
-                                  setExpandedActionId(null);
-                                  setEditingAction(null);
-                                }}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
+              <DndContext 
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+                modifiers={[restrictToVerticalAxis]}
+              >
+                <SortableContext 
+                  items={actions.map(action => action.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3">
+                    {actions
+                      .sort((a, b) => a.priority - b.priority)
+                      .map((action) => (
+                        <SortableActionItem key={action.id} action={action} />
+                      ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </ScrollArea>
           </CardContent>
         </Card>

@@ -23,6 +23,7 @@ interface ActionsContextType {
   addAction: (action: GlobalAction) => void;
   toggleAction: (id: string) => void;
   resetToDefaults: () => void;
+  reorderActions: (activeId: string, overId: string) => void;
 }
 
 const ActionsContext = createContext<ActionsContextType | undefined>(undefined);
@@ -291,6 +292,26 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
     setActions([...defaultActions]);
   };
 
+  const reorderActions = (activeId: string, overId: string) => {
+    setActions(prevActions => {
+      const oldIndex = prevActions.findIndex(action => action.id === activeId);
+      const newIndex = prevActions.findIndex(action => action.id === overId);
+      
+      if (oldIndex === -1 || newIndex === -1) return prevActions;
+      
+      // アクションを並び替え
+      const reorderedActions = [...prevActions];
+      const [movedAction] = reorderedActions.splice(oldIndex, 1);
+      reorderedActions.splice(newIndex, 0, movedAction);
+      
+      // 優先度を更新（1から開始）
+      return reorderedActions.map((action, index) => ({
+        ...action,
+        priority: index + 1
+      }));
+    });
+  };
+
   return (
     <ActionsContext.Provider value={{
       actions,
@@ -299,7 +320,8 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
       deleteAction,
       addAction,
       toggleAction,
-      resetToDefaults
+      resetToDefaults,
+      reorderActions
     }}>
       {children}
     </ActionsContext.Provider>
