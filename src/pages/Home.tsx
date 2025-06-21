@@ -2,7 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Copy, Clock, Hash, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Copy, Clock, Hash, MoreHorizontal, Settings, Download, Upload, Trash2, Info, Eye, Palette } from "lucide-react";
 
 // モックデータ
 const mockClipboardItems = [
@@ -52,9 +59,46 @@ export default function Home() {
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-lg font-semibold">ClipOne</h1>
             <div className="flex gap-1">
-              <Button size="sm" variant="ghost">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="ghost">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    設定
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Palette className="mr-2 h-4 w-4" />
+                    テーマ
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <Eye className="mr-2 h-4 w-4" />
+                    表示オプション
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <Download className="mr-2 h-4 w-4" />
+                    エクスポート
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Upload className="mr-2 h-4 w-4" />
+                    インポート
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    履歴をクリア
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <Info className="mr-2 h-4 w-4" />
+                    ClipOneについて
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <Input 
@@ -109,10 +153,8 @@ export default function Home() {
 
       {/* フッター */}
       <div className="flex-shrink-0 border-t bg-card p-2">
-        <div className="flex gap-1">
-          <Button size="sm" variant="outline">クリア</Button>
-          <Button size="sm" variant="outline">エクスポート</Button>
-          <div className="ml-auto text-xs text-muted-foreground px-2 py-1">
+        <div className="flex justify-end">
+          <div className="text-xs text-muted-foreground px-2 py-1">
             {mockClipboardItems.length}件
           </div>
         </div>
