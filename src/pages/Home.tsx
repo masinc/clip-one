@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Copy, Clock, Hash, MoreHorizontal, Settings, Info, Search, Languages, ExternalLink, Edit3, Bot, QrCode, FileText, Code, Mail, Bookmark, Calculator, Music, Brain, Sparkles, MessageSquare, GitBranch, Terminal, Lock, Key, Shuffle, RotateCcw, RefreshCw, Calendar, Users, Folder, Archive, Scissors, Cog, Sliders } from "lucide-react";
+import { Copy, Clock, Hash, MoreHorizontal, Settings, Info, Search, Languages, ExternalLink, Edit3, Bot, QrCode, FileText, Code, Mail, Bookmark, Calculator, Music, Brain, Sparkles, MessageSquare, GitBranch, Terminal, Lock, Key, Shuffle, RotateCcw, RefreshCw, Calendar, Users, Folder, Archive, Scissors, Sliders } from "lucide-react";
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
 
@@ -456,8 +456,8 @@ export default function Home() {
     const padding = 8; // 画面端からの余白
     
     // メニューが実際にレンダリングされている場合はその実際のサイズを使用
-    let menuWidth = 160; // フォールバック値
-    let menuHeight = 160; // フォールバック値
+    let menuWidth = 200; // フォールバック値を大きめに設定
+    let menuHeight = 300; // フォールバック値を大きめに設定
     
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
@@ -470,12 +470,12 @@ export default function Home() {
     
     // 右端を超える場合は左側に表示
     if (x + menuWidth > window.innerWidth - padding) {
-      x = clientX - menuWidth;
+      x = Math.max(padding, clientX - menuWidth);
     }
     
     // 下端を超える場合は上側に表示
     if (y + menuHeight > window.innerHeight - padding) {
-      y = clientY - menuHeight;
+      y = Math.max(padding, clientY - menuHeight);
     }
     
     // 左端を超える場合は右端に合わせる
@@ -486,6 +486,15 @@ export default function Home() {
     // 上端を超える場合は上端に合わせる
     if (y < padding) {
       y = padding;
+    }
+    
+    // 画面に収まらない場合は中央に調整
+    if (x + menuWidth > window.innerWidth - padding) {
+      x = Math.max(padding, window.innerWidth - menuWidth - padding);
+    }
+    
+    if (y + menuHeight > window.innerHeight - padding) {
+      y = Math.max(padding, window.innerHeight - menuHeight - padding);
     }
     
     return { x, y };
@@ -690,7 +699,7 @@ export default function Home() {
           {/* メニュー */}
           <div 
             ref={menuRef}
-            className="fixed z-50 bg-card text-card-foreground border border-border rounded-md shadow-lg py-1 min-w-40"
+            className="fixed z-50 bg-card text-card-foreground border border-border rounded-md shadow-lg py-1 min-w-40 max-h-80 flex flex-col"
             style={{
               left: contextMenu.x,
               top: contextMenu.y,
@@ -717,33 +726,35 @@ export default function Home() {
             </div>
 
             {/* アクションリスト */}
-            {(() => {
-              const { actions, hasMore } = getAvailableActions(contextMenu.item);
-              return (
-                <>
-                  {actions.map((action, index) => (
-                    <button
-                      key={action.id}
-                      className={`w-full text-left px-2 py-1.5 hover:bg-accent hover:text-accent-foreground flex items-center gap-2 text-xs ${
-                        index === selectedActionIndex ? 'bg-accent text-accent-foreground' : ''
-                      }`}
-                      onClick={() => executeAction(action, contextMenu.item!)}
-                    >
-                      <action.icon className="h-3.5 w-3.5" />
-                      {action.label}
-                    </button>
-                  ))}
-                  {hasMore && !searchQuery && !showAllActions && (
-                    <button
-                      className="w-full text-left px-2 py-1.5 hover:bg-accent hover:text-accent-foreground text-xs text-muted-foreground"
-                      onClick={() => setShowAllActions(true)}
-                    >
-                      その他のアクション...
-                    </button>
-                  )}
-                </>
-              );
-            })()}
+            <div className="overflow-y-auto flex-1">
+              {(() => {
+                const { actions, hasMore } = getAvailableActions(contextMenu.item);
+                return (
+                  <>
+                    {actions.map((action, index) => (
+                      <button
+                        key={action.id}
+                        className={`w-full text-left px-2 py-1.5 hover:bg-accent hover:text-accent-foreground flex items-center gap-2 text-xs ${
+                          index === selectedActionIndex ? 'bg-accent text-accent-foreground' : ''
+                        }`}
+                        onClick={() => executeAction(action, contextMenu.item!)}
+                      >
+                        <action.icon className="h-3.5 w-3.5" />
+                        {action.label}
+                      </button>
+                    ))}
+                    {hasMore && !searchQuery && !showAllActions && (
+                      <button
+                        className="w-full text-left px-2 py-1.5 hover:bg-accent hover:text-accent-foreground text-xs text-muted-foreground"
+                        onClick={() => setShowAllActions(true)}
+                      >
+                        その他のアクション...
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </>
       )}
