@@ -4,11 +4,9 @@ use tauri::Manager;
 
 mod database;
 mod commands;
-mod clipboard_monitor;
 
 use database::Database;
 use commands::*;
-use clipboard_monitor::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,8 +21,10 @@ pub fn run() {
                 match Database::new().await {
                     Ok(database) => {
                         // データベースを状態管理に追加
-                        app_handle.manage(Arc::new(Mutex::new(database)));
+                        let db_state = Arc::new(Mutex::new(database));
+                        app_handle.manage(db_state.clone());
                         println!("データベース接続が正常に初期化されました");
+                        println!("クリップボード監視はフロントエンドで開始されます");
                     }
                     Err(e) => {
                         eprintln!("データベース初期化エラー: {}", e);
@@ -36,21 +36,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // クリップボード操作
-            get_clipboard_text,
-            set_clipboard_text,
-            start_clipboard_monitoring,
-            stop_clipboard_monitoring,
-            get_clipboard_monitoring_status,
-            has_clipboard_text,
-            clear_clipboard,
+            // クリップボード操作（データベース連携）
             save_clipboard_item,
             check_duplicate_content,
-            
-            // クリップボード監視サービス
-            start_clipboard_monitoring_service,
-            stop_clipboard_monitoring_service,
-            get_clipboard_monitoring_service_status,
             
             // 履歴管理
             get_clipboard_history,
