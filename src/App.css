@@ -97,8 +97,8 @@ h1 {
   text-align: center;
 }
 
-input,
-button {
+input:not(.search-input),
+button:not(.search-input) {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
@@ -123,8 +123,8 @@ button:active {
   background-color: #e8e8e8;
 }
 
-input,
-button {
+input:not(.search-input),
+button:not(.search-input) {
   outline: none;
 }
 
@@ -142,8 +142,8 @@ button {
     color: #24c8db;
   }
 
-  input,
-  button {
+  input:not(.search-input),
+  button:not(.search-input) {
     color: #ffffff;
     background-color: #0f0f0f98;
   }

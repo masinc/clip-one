@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
@@ -99,7 +98,10 @@ export default function Home() {
               </DropdownMenu>
             </div>
           </div>
-          <Input placeholder="履歴を検索..." className="bg-white" />
+          <input 
+            placeholder="履歴を検索..." 
+            className="search-input h-9 w-full bg-card text-foreground border border-border rounded-md px-3 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+          />
         </div>
       </div>
 
