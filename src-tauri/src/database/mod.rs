@@ -33,6 +33,13 @@ impl Database {
         if let Some(parent) = db_path.parent() {
             println!("ディレクトリ作成: {}", parent.display());
             tokio::fs::create_dir_all(parent).await?;
+            
+            // ディレクトリが実際に作成されたか確認
+            if parent.exists() {
+                println!("ディレクトリ作成成功: {}", parent.display());
+            } else {
+                println!("ディレクトリ作成失敗: {}", parent.display());
+            }
         }
 
         // WindowsでSQLiteの絶対パスを使用する場合は sqlite:/// が必要
@@ -43,7 +50,25 @@ impl Database {
         };
         println!("データベースURL: {}", database_url);
         
-        let pool = SqlitePool::connect(&database_url).await?;
+        // 空のファイルを事前作成してみる
+        if !db_path.exists() {
+            println!("データベースファイル事前作成: {}", db_path.display());
+            if let Err(e) = tokio::fs::File::create(&db_path).await {
+                println!("ファイル作成エラー: {}", e);
+                return Err(anyhow::anyhow!("ファイル作成エラー: {}", e));
+            }
+        }
+        
+        let pool = match SqlitePool::connect(&database_url).await {
+            Ok(pool) => {
+                println!("データベース接続成功");
+                pool
+            }
+            Err(e) => {
+                println!("データベース接続エラー詳細: {:?}", e);
+                return Err(anyhow::anyhow!("データベース接続エラー: {}", e));
+            }
+        };
         
         // マイグレーション実行
         let mut db = Self { pool };
