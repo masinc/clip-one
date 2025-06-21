@@ -43,9 +43,10 @@ const convertToClipboardAction = (action: GlobalAction, navigate?: (path: string
     icon: IconComponent,
     priority: action.priority,
     keywords: action.keywords,
-    condition: action.allowedContentTypes.includes('url') ? 
-      (content: string, type: string) => type === 'url' || /^https?:\/\//.test(content) :
-      undefined,
+    condition: (content: string, type: string) => {
+      return action.allowedContentTypes.includes(type) || 
+             (action.allowedContentTypes.includes('url') && /^https?:\/\//.test(content));
+    },
     execute: (content: string, nav?: (path: string) => void, itemId?: number) => {
       if (!action.enabled) return;
       
