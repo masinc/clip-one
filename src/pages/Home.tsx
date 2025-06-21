@@ -60,51 +60,46 @@ export default function Home() {
             <h1 className="text-lg font-semibold">ClipOne</h1>
             <div className="flex gap-1">
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
+                <DropdownMenuTrigger>
+                  <MoreHorizontal className="h-4 w-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end">
                   <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
+                    <Settings className="h-4 w-4" />
                     設定
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <Palette className="mr-2 h-4 w-4" />
+                    <Palette className="h-4 w-4" />
                     テーマ
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem>
-                    <Eye className="mr-2 h-4 w-4" />
-                    表示オプション
+                    <Eye className="h-4 w-4" />
+                    表示設定
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
-                    <Download className="mr-2 h-4 w-4" />
+                    <Download className="h-4 w-4" />
                     エクスポート
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <Upload className="mr-2 h-4 w-4" />
+                    <Upload className="h-4 w-4" />
                     インポート
                   </DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    履歴をクリア
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-red-600">
+                    <Trash2 className="h-4 w-4" />
+                    履歴を削除
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
-                    <Info className="mr-2 h-4 w-4" />
-                    ClipOneについて
+                    <Info className="h-4 w-4" />
+                    ClipOne について
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
-          <Input 
-            placeholder="履歴を検索..." 
-            className="h-8"
-          />
+          <Input placeholder="履歴を検索..." />
         </div>
       </div>
 
@@ -113,36 +108,34 @@ export default function Home() {
         <ScrollArea className="h-full">
           <div className="p-2">
             {mockClipboardItems.map((item, index) => (
-              <Card key={item.id} className="mb-1 p-0 hover:bg-muted/30 cursor-pointer transition-colors">
-                <div className="p-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      <span className="text-xs">{getTypeIcon(item.type)}</span>
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Hash className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs font-mono text-muted-foreground">{index + 1}</span>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {formatRelativeTime(item.timestamp)}
-                        </div>
-                        <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
-                          {item.app}
-                        </span>
+              <Card key={item.id} className="mb-1 p-3 hover:bg-gray-50 cursor-pointer transition-colors">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <span className="text-xs">{getTypeIcon(item.type)}</span>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Hash className="h-3 w-3 text-gray-500" />
+                      <span className="text-xs font-mono text-gray-500">{index + 1}</span>
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <Clock className="h-3 w-3" />
+                        {formatRelativeTime(item.timestamp)}
                       </div>
-                      
-                      <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
-                        {truncateText(item.content)}
-                      </p>
+                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
+                        {item.app}
+                      </span>
                     </div>
                     
-                    <div className="flex-shrink-0">
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+                      {truncateText(item.content)}
+                    </p>
+                  </div>
+                  
+                  <div className="flex-shrink-0">
+                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                      <Copy className="h-3 w-3" />
+                    </Button>
                   </div>
                 </div>
               </Card>
