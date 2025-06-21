@@ -15,13 +15,21 @@ pub async fn save_clipboard_item(
     let content_type = content_type.unwrap_or_else(|| {
         // コンテンツタイプを自動判定
         if content.starts_with("http://") || content.starts_with("https://") {
-            "url".to_string()
+            "text/uri-list".to_string()
         } else if content.starts_with("data:image/") {
-            "image".to_string()
+            "image/png".to_string() // デフォルトでPNG、実際のMIMEタイプは後で解析
+        } else if content.starts_with("data:") {
+            "application/octet-stream".to_string()
         } else if content.contains("<html") || content.contains("</html>") {
-            "html".to_string()
+            "text/html".to_string()
+        } else if content.starts_with("{\\rtf") {
+            "text/rtf".to_string()
+        } else if content.contains("\n") && content.len() > 100 {
+            "text/plain".to_string() // 長い複数行テキスト
+        } else if content.starts_with("/") || content.starts_with("C:\\") || content.contains("\\") {
+            "files".to_string() // ファイルパス
         } else {
-            "text".to_string()
+            "text/plain".to_string()
         }
     });
 
