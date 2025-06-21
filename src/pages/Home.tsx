@@ -9,8 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Copy, Clock, Hash, MoreHorizontal, Settings, Download, Upload, Trash2, Info, Eye, Palette, Search, Languages, ExternalLink, Edit3, Bot, QrCode, FileText, Code, Mail, Share2, Bookmark, Calculator, Image, Music, Video, Globe, Zap, Brain, Sparkles, MessageSquare, GitBranch, Terminal, Database, Cloud, Lock, Key, Shuffle, RotateCcw, RefreshCw, AlertCircle, CheckCircle, Heart, Star, Tag, Calendar, MapPin, Phone, Users, Folder, Archive, Scissors, Clipboard, PaintBucket, Wand2, Target, Rocket, Trophy, Gift, Coffee, Sun, Moon } from "lucide-react";
+import { Copy, Clock, Hash, MoreHorizontal, Settings, Info, Search, Languages, ExternalLink, Edit3, Bot, QrCode, FileText, Code, Mail, Bookmark, Calculator, Music, Brain, Sparkles, MessageSquare, GitBranch, Terminal, Lock, Key, Shuffle, RotateCcw, RefreshCw, Calendar, Users, Folder, Archive, Scissors } from "lucide-react";
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router";
 
 // アクション定義
 interface ClipboardAction {
@@ -431,6 +432,7 @@ function getTypeIcon(type: string) {
 }
 
 export default function Home() {
+  const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -606,31 +608,9 @@ export default function Home() {
                   <MoreHorizontal className="h-4 w-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/settings')}>
                     <Settings className="h-4 w-4" />
                     設定
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Palette className="h-4 w-4" />
-                    テーマ
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Eye className="h-4 w-4" />
-                    表示設定
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Download className="h-4 w-4" />
-                    エクスポート
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Upload className="h-4 w-4" />
-                    インポート
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-600">
-                    <Trash2 className="h-4 w-4" />
-                    履歴を削除
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
