@@ -635,7 +635,7 @@ export default function Home() {
             {mockClipboardItems.map((item, index) => (
               <Card 
                 key={item.id} 
-                className="mb-1 p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                className="mb-1 p-3 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors border hover:border-accent-foreground/20"
                 onContextMenu={(e) => handleContextMenu(e, item)}
               >
                 <div className="flex items-start gap-3">
@@ -645,13 +645,13 @@ export default function Home() {
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Hash className="h-3 w-3 text-gray-500" />
-                      <span className="text-xs font-mono text-gray-500">{index + 1}</span>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <Hash className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs font-mono text-muted-foreground">{index + 1}</span>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         {formatRelativeTime(item.timestamp)}
                       </div>
-                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">
+                      <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
                         {item.app}
                       </span>
                     </div>
