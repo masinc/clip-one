@@ -1,0 +1,132 @@
+use tauri::State;
+use crate::database::{Database, ClipboardItem};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+/// クリップボード履歴を取得
+#[tauri::command]
+pub async fn get_clipboard_history(
+    db_state: State<'_, Arc<Mutex<Database>>>,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> Result<Vec<ClipboardItem>, String> {
+    let db = db_state.lock().await;
+    db.get_history(limit, offset)
+        .await
+        .map_err(|e| format!("履歴取得エラー: {}", e))
+}
+
+/// クリップボード履歴を検索
+#[tauri::command]
+pub async fn search_clipboard_history(
+    db_state: State<'_, Arc<Mutex<Database>>>,
+    query: String,
+    limit: Option<u32>,
+) -> Result<Vec<ClipboardItem>, String> {
+    let db = db_state.lock().await;
+    db.search_history(&query, limit)
+        .await
+        .map_err(|e| format!("履歴検索エラー: {}", e))
+}
+
+/// 特定のアイテムを取得
+#[tauri::command]
+pub async fn get_clipboard_item(
+    db_state: State<'_, Arc<Mutex<Database>>>,
+    id: String,
+) -> Result<Option<ClipboardItem>, String> {
+    let db = db_state.lock().await;
+    let items = db.get_history(None, None)
+        .await
+        .map_err(|e| format!("履歴取得エラー: {}", e))?;
+    
+    let item = items.into_iter().find(|item| item.id == id);
+    Ok(item)
+}
+
+/// お気に入りの切り替え
+#[tauri::command]
+pub async fn toggle_favorite(
+    db_state: State<'_, Arc<Mutex<Database>>>,
+    id: String,
+) -> Result<bool, String> {
+    let db = db_state.lock().await;
+    db.toggle_favorite(&id)
+        .await
+        .map_err(|e| format!("お気に入り更新エラー: {}", e))
+}
+
+/// アイテムを削除
+#[tauri::command]
+pub async fn delete_clipboard_item(
+    db_state: State<'_, Arc<Mutex<Database>>>,
+    id: String,
+) -> Result<(), String> {
+    let db = db_state.lock().await;
+    db.delete_item(&id)
+        .await
+        .map_err(|e| format!("アイテム削除エラー: {}", e))
+}
+
+/// 履歴をクリア
+#[tauri::command]
+pub async fn clear_clipboard_history(
+    db_state: State<'_, Arc<Mutex<Database>>>,
+) -> Result<(), String> {
+    let db = db_state.lock().await;
+    db.clear_history()
+        .await
+        .map_err(|e| format!("履歴クリアエラー: {}", e))
+}
+
+/// 履歴の統計を取得
+#[tauri::command]
+pub async fn get_clipboard_stats(
+    db_state: State<'_, Arc<Mutex<Database>>>,
+) -> Result<ClipboardStats, String> {
+    let db = db_state.lock().await;
+    
+    let total_count = db.get_item_count()
+        .await
+        .map_err(|e| format!("統計取得エラー: {}", e))?;
+
+    let items = db.get_history(None, None)
+        .await
+        .map_err(|e| format!("履歴取得エラー: {}", e))?;
+
+    let favorite_count = items.iter().filter(|item| item.is_favorite).count() as i64;
+    
+    let content_type_counts = {
+        let mut counts = std::collections::HashMap::new();
+        for item in &items {
+            *counts.entry(item.content_type.clone()).or_insert(0) += 1;
+        }
+        counts
+    };
+
+    Ok(ClipboardStats {
+        total_items: total_count,
+        favorite_items: favorite_count,
+        content_type_counts,
+    })
+}
+
+/// 古いアイテムをクリーンアップ
+#[tauri::command]
+pub async fn cleanup_old_items(
+    db_state: State<'_, Arc<Mutex<Database>>>,
+    max_items: usize,
+) -> Result<(), String> {
+    let db = db_state.lock().await;
+    db.cleanup_old_items(max_items)
+        .await
+        .map_err(|e| format!("クリーンアップエラー: {}", e))
+}
+
+/// 履歴統計の構造体
+#[derive(serde::Serialize)]
+pub struct ClipboardStats {
+    pub total_items: i64,
+    pub favorite_items: i64,
+    pub content_type_counts: std::collections::HashMap<String, i32>,
+}
