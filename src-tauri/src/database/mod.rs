@@ -1,8 +1,8 @@
-use sqlx::{sqlite::SqlitePool, Row};
-use std::path::PathBuf;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::{sqlite::SqlitePool, Row};
+use std::path::PathBuf;
 use uuid::Uuid;
 
 /// クリップボードアイテムの構造体
@@ -26,14 +26,14 @@ impl Database {
     /// データベース接続を初期化
     pub async fn new() -> Result<Self> {
         let db_path = Self::get_database_path().await?;
-        
+
         println!("データベースパス: {}", db_path.display());
-        
+
         // データベースディレクトリを作成
         if let Some(parent) = db_path.parent() {
             println!("ディレクトリ作成: {}", parent.display());
             tokio::fs::create_dir_all(parent).await?;
-            
+
             // ディレクトリが実際に作成されたか確認
             if parent.exists() {
                 println!("ディレクトリ作成成功: {}", parent.display());
@@ -44,12 +44,15 @@ impl Database {
 
         // WindowsでSQLiteの絶対パスを使用する場合は sqlite:/// が必要
         let database_url = if cfg!(windows) {
-            format!("sqlite:///{}", db_path.display().to_string().replace('\\', "/"))
+            format!(
+                "sqlite:///{}",
+                db_path.display().to_string().replace('\\', "/")
+            )
         } else {
             format!("sqlite://{}", db_path.display())
         };
         println!("データベースURL: {}", database_url);
-        
+
         // 空のファイルを事前作成してみる
         if !db_path.exists() {
             println!("データベースファイル事前作成: {}", db_path.display());
@@ -58,7 +61,7 @@ impl Database {
                 return Err(anyhow::anyhow!("ファイル作成エラー: {}", e));
             }
         }
-        
+
         let pool = match SqlitePool::connect(&database_url).await {
             Ok(pool) => {
                 println!("データベース接続成功");
@@ -69,17 +72,17 @@ impl Database {
                 return Err(anyhow::anyhow!("データベース接続エラー: {}", e));
             }
         };
-        
+
         // マイグレーション実行
         let mut db = Self { pool };
         db.run_migrations().await?;
-        
+
         Ok(db)
     }
 
     /// データベースファイルのパスを取得
     async fn get_database_path() -> Result<PathBuf> {
-        // 現在の作業ディレクトリを使用（開発時により安全）
+        // プロジェクトルートのdataディレクトリを使用（src-tauriの外）
         let current_dir = std::env::current_dir()?;
         let app_dir = current_dir.join("data");
         Ok(app_dir.join("clipone.db"))
@@ -89,28 +92,27 @@ impl Database {
     async fn run_migrations(&mut self) -> Result<()> {
         // 埋め込まれたマイグレーションファイルを実行
         let migration_sql = include_str!("../../migrations/001_initial.sql");
-        
+
         // スキーマバージョンテーブルを作成
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS schema_version (
                 version INTEGER PRIMARY KEY,
                 applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
 
         // バージョン1のマイグレーションが適用済みかチェック
-        let version_exists: bool = sqlx::query_scalar("SELECT 1 FROM schema_version WHERE version = 1")
-            .fetch_optional(&self.pool)
-            .await?
-            .unwrap_or(false);
+        let version_exists: bool =
+            sqlx::query_scalar("SELECT 1 FROM schema_version WHERE version = 1")
+                .fetch_optional(&self.pool)
+                .await?
+                .unwrap_or(false);
 
         if !version_exists {
             // マイグレーションを実行
-            sqlx::query(migration_sql)
-                .execute(&self.pool)
-                .await?;
+            sqlx::query(migration_sql).execute(&self.pool).await?;
 
             // バージョンを記録
             sqlx::query("INSERT INTO schema_version (version) VALUES (1)")
@@ -122,7 +124,12 @@ impl Database {
     }
 
     /// クリップボードアイテムを保存
-    pub async fn save_clipboard_item(&self, content: &str, content_type: &str, source_app: Option<&str>) -> Result<ClipboardItem> {
+    pub async fn save_clipboard_item(
+        &self,
+        content: &str,
+        content_type: &str,
+        source_app: Option<&str>,
+    ) -> Result<ClipboardItem> {
         let id = Uuid::new_v4().to_string();
         let timestamp = Utc::now().timestamp_millis();
         let created_at = Utc::now();
@@ -155,7 +162,11 @@ impl Database {
     }
 
     /// 履歴を取得（ページネーション対応）
-    pub async fn get_history(&self, limit: Option<u32>, offset: Option<u32>) -> Result<Vec<ClipboardItem>> {
+    pub async fn get_history(
+        &self,
+        limit: Option<u32>,
+        offset: Option<u32>,
+    ) -> Result<Vec<ClipboardItem>> {
         let limit = limit.unwrap_or(100);
         let offset = offset.unwrap_or(0);
 
@@ -163,15 +174,16 @@ impl Database {
             "SELECT id, content, content_type, timestamp, is_favorite, source_app, created_at
              FROM clipboard_items
              ORDER BY timestamp DESC
-             LIMIT ? OFFSET ?"
+             LIMIT ? OFFSET ?",
         )
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.pool)
         .await?;
 
-        let items = rows.into_iter().map(|row| {
-            ClipboardItem {
+        let items = rows
+            .into_iter()
+            .map(|row| ClipboardItem {
                 id: row.get("id"),
                 content: row.get("content"),
                 content_type: row.get("content_type"),
@@ -179,14 +191,18 @@ impl Database {
                 is_favorite: row.get("is_favorite"),
                 source_app: row.get("source_app"),
                 created_at: row.get("created_at"),
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(items)
     }
 
     /// 全文検索で履歴を検索
-    pub async fn search_history(&self, query: &str, limit: Option<u32>) -> Result<Vec<ClipboardItem>> {
+    pub async fn search_history(
+        &self,
+        query: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<ClipboardItem>> {
         let limit = limit.unwrap_or(50);
 
         let rows = sqlx::query(
@@ -202,8 +218,9 @@ impl Database {
         .fetch_all(&self.pool)
         .await?;
 
-        let items = rows.into_iter().map(|row| {
-            ClipboardItem {
+        let items = rows
+            .into_iter()
+            .map(|row| ClipboardItem {
                 id: row.get("id"),
                 content: row.get("content"),
                 content_type: row.get("content_type"),
@@ -211,18 +228,19 @@ impl Database {
                 is_favorite: row.get("is_favorite"),
                 source_app: row.get("source_app"),
                 created_at: row.get("created_at"),
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(items)
     }
 
     /// お気に入りの切り替え
     pub async fn toggle_favorite(&self, id: &str) -> Result<bool> {
-        let current: bool = sqlx::query_scalar("SELECT is_favorite FROM clipboard_items WHERE id = ?")
-            .bind(id)
-            .fetch_one(&self.pool)
-            .await?;
+        let current: bool =
+            sqlx::query_scalar("SELECT is_favorite FROM clipboard_items WHERE id = ?")
+                .bind(id)
+                .fetch_one(&self.pool)
+                .await?;
 
         let new_favorite = !current;
 
@@ -274,16 +292,14 @@ impl Database {
                  SELECT id FROM clipboard_items 
                  ORDER BY timestamp DESC 
                  LIMIT ?
-             )"
+             )",
         )
         .bind(max_items as i64)
         .execute(&self.pool)
         .await?;
 
         // データベースを最適化
-        sqlx::query("VACUUM")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query("VACUUM").execute(&self.pool).await?;
 
         Ok(())
     }

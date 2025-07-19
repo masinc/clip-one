@@ -1,13 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
-import { 
-  readText, 
-  writeText, 
-  startListening, 
-  onTextUpdate,
-  hasText,
-  clear
-} from 'tauri-plugin-clipboard-api';
-import type { UnlistenFn } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import type { ClipboardItem } from '@/types/clipboard';
 
 export interface ClipboardHook {
   currentText: string;
@@ -25,15 +19,14 @@ export function useClipboard(): ClipboardHook {
   const [currentText, setCurrentText] = useState<string>('');
   const [isMonitoring, setIsMonitoring] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [unlistenMain, setUnlistenMain] = useState<(() => Promise<void>) | null>(null);
-  const [unlistenText, setUnlistenText] = useState<UnlistenFn | null>(null);
+  const [eventUnlisten, setEventUnlisten] = useState<UnlistenFn | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
 
   const readClipboard = useCallback(async (): Promise<string> => {
     try {
       clearError();
-      const text = await readText();
+      const text = await invoke<string>('get_clipboard_text');
       setCurrentText(text);
       return text;
     } catch (err) {
@@ -46,7 +39,7 @@ export function useClipboard(): ClipboardHook {
   const writeClipboard = useCallback(async (text: string): Promise<void> => {
     try {
       clearError();
-      await writeText(text);
+      await invoke('set_clipboard_text', { text });
       setCurrentText(text);
     } catch (err) {
       const errorMsg = `クリップボード書き込みエラー: ${err}`;
@@ -58,7 +51,7 @@ export function useClipboard(): ClipboardHook {
   const hasClipboardText = useCallback(async (): Promise<boolean> => {
     try {
       clearError();
-      return await hasText();
+      return await invoke<boolean>('has_clipboard_text');
     } catch (err) {
       const errorMsg = `クリップボード状態チェックエラー: ${err}`;
       setError(errorMsg);
@@ -69,7 +62,7 @@ export function useClipboard(): ClipboardHook {
   const clearClipboard = useCallback(async (): Promise<void> => {
     try {
       clearError();
-      await clear();
+      await invoke('clear_clipboard_text');
       setCurrentText('');
     } catch (err) {
       const errorMsg = `クリップボードクリアエラー: ${err}`;
@@ -87,22 +80,29 @@ export function useClipboard(): ClipboardHook {
         return;
       }
 
-      // テキスト変更の監視を設定
-      const textUnlisten = await onTextUpdate((newText: string) => {
-        console.log('クリップボードテキスト更新:', newText);
-        setCurrentText(newText);
-        onUpdate?.(newText);
+      console.log('🚀 Rustイベントベースのクリップボード監視を開始...');
+
+      // Rustのイベントをリッスン
+      const unlisten = await listen<ClipboardItem>('clipboard-updated', (event) => {
+        console.log('📨 Rustからclipboard-updatedイベント受信:', event.payload);
+        const item = event.payload;
+        setCurrentText(item.content);
+        onUpdate?.(item.content);
       });
-      setUnlistenText(textUnlisten);
 
-      // メイン監視を開始
-      const mainUnlisten = await startListening();
-      setUnlistenMain(mainUnlisten);
+      setEventUnlisten(() => unlisten);
 
-      setIsMonitoring(true);
-      console.log('クリップボード監視を開始しました');
+      // Rust側で監視開始
+      await invoke('start_clipboard_monitoring');
+      
+      // 監視状態を確認
+      const monitoringStatus = await invoke<boolean>('get_monitoring_status');
+      setIsMonitoring(monitoringStatus);
+      
+      console.log('✅ Rustイベントベースのクリップボード監視を開始しました');
     } catch (err) {
       const errorMsg = `クリップボード監視開始エラー: ${err}`;
+      console.error('❌', errorMsg);
       setError(errorMsg);
       throw new Error(errorMsg);
     }
@@ -117,34 +117,40 @@ export function useClipboard(): ClipboardHook {
         return;
       }
 
-      // 各種監視を停止
-      if (unlistenText) {
-        unlistenText();
-        setUnlistenText(null);
-      }
+      console.log('🛑 Rustイベントベースのクリップボード監視を停止...');
 
-      if (unlistenMain) {
-        await unlistenMain();
-        setUnlistenMain(null);
+      // Rust側で監視停止
+      await invoke('stop_clipboard_monitoring');
+
+      // イベントリスナーを停止
+      if (eventUnlisten) {
+        eventUnlisten();
+        setEventUnlisten(null);
       }
 
       setIsMonitoring(false);
-      console.log('クリップボード監視を停止しました');
+      console.log('✅ クリップボード監視を停止しました');
     } catch (err) {
       const errorMsg = `クリップボード監視停止エラー: ${err}`;
       setError(errorMsg);
-      throw new Error(errorMsg);
+      console.error(errorMsg);
+      // エラーでも状態をリセット
+      setIsMonitoring(false);
+      setEventUnlisten(null);
     }
-  }, [isMonitoring, unlistenMain, unlistenText, clearError]);
+  }, [isMonitoring, eventUnlisten, clearError]);
 
   // コンポーネントアンマウント時の自動クリーンアップ
   useEffect(() => {
     return () => {
+      if (eventUnlisten) {
+        eventUnlisten();
+      }
       if (isMonitoring) {
         stopMonitoring().catch(console.error);
       }
     };
-  }, [isMonitoring, stopMonitoring]);
+  }, [isMonitoring, eventUnlisten, stopMonitoring]);
 
   return {
     currentText,

@@ -46,7 +46,7 @@ export const clipboardApi = {
 export const historyApi = {
   // 履歴取得
   getHistory: (limit?: number, offset?: number): Promise<ClipboardItem[]> => 
-    invoke('get_clipboard_history', { limit, offset }),
+    invoke('get_clipboard_history', { limit: limit || null, offset: offset || null }),
 
   // 履歴検索
   searchHistory: (query: string, limit?: number): Promise<ClipboardItem[]> => 

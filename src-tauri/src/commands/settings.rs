@@ -1,7 +1,7 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use anyhow::Result;
 
 /// アプリケーション設定の構造体
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,7 +78,7 @@ impl AppSettings {
     /// 設定ファイルから読み込み
     pub async fn load() -> Result<Self> {
         let settings_path = Self::get_settings_path()?;
-        
+
         if !settings_path.exists() {
             // 設定ファイルが存在しない場合はデフォルト設定を保存
             let default_settings = Self::default();
@@ -88,14 +88,14 @@ impl AppSettings {
 
         let content = tokio::fs::read_to_string(&settings_path).await?;
         let settings: Self = serde_json::from_str(&content)?;
-        
+
         Ok(settings)
     }
 
     /// 設定ファイルに保存
     pub async fn save(&self) -> Result<()> {
         let settings_path = Self::get_settings_path()?;
-        
+
         // ディレクトリを作成
         if let Some(parent) = settings_path.parent() {
             tokio::fs::create_dir_all(parent).await?;
@@ -103,7 +103,7 @@ impl AppSettings {
 
         let content = serde_json::to_string_pretty(self)?;
         tokio::fs::write(&settings_path, content).await?;
-        
+
         Ok(())
     }
 }
@@ -134,22 +134,27 @@ pub async fn update_setting(key: String, value: serde_json::Value) -> Result<(),
 
     match key.as_str() {
         "auto_start" => {
-            settings.auto_start = value.as_bool()
+            settings.auto_start = value
+                .as_bool()
                 .ok_or_else(|| "auto_startはboolean値である必要があります".to_string())?;
-        },
+        }
         "max_history_items" => {
-            settings.max_history_items = value.as_u64()
-                .ok_or_else(|| "max_history_itemsは数値である必要があります".to_string())? as u32;
-        },
+            settings.max_history_items = value
+                .as_u64()
+                .ok_or_else(|| "max_history_itemsは数値である必要があります".to_string())?
+                as u32;
+        }
         "theme" => {
-            settings.theme = value.as_str()
+            settings.theme = value
+                .as_str()
                 .ok_or_else(|| "themeは文字列である必要があります".to_string())?
                 .to_string();
-        },
+        }
         "notifications.enabled" => {
-            settings.notifications.enabled = value.as_bool()
-                .ok_or_else(|| "notifications.enabledはboolean値である必要があります".to_string())?;
-        },
+            settings.notifications.enabled = value.as_bool().ok_or_else(|| {
+                "notifications.enabledはboolean値である必要があります".to_string()
+            })?;
+        }
         _ => return Err(format!("未知の設定キー: {}", key)),
     }
 
@@ -167,6 +172,6 @@ pub async fn reset_settings() -> Result<AppSettings, String> {
         .save()
         .await
         .map_err(|e| format!("設定リセットエラー: {}", e))?;
-    
+
     Ok(default_settings)
 }

@@ -1,9 +1,9 @@
-use tauri::State;
-use crate::database::{Database, ClipboardItem};
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use serde::{Deserialize, Serialize};
+use crate::database::{ClipboardItem, Database};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tauri::State;
+use tokio::sync::Mutex;
 
 /// エクスポート用のデータ構造
 #[derive(Serialize, Deserialize)]
@@ -20,7 +20,8 @@ pub async fn export_clipboard_history_json(
     db_state: State<'_, Arc<Mutex<Database>>>,
 ) -> Result<String, String> {
     let db = db_state.lock().await;
-    let items = db.get_history(None, None)
+    let items = db
+        .get_history(None, None)
         .await
         .map_err(|e| format!("履歴取得エラー: {}", e))?;
 
@@ -41,7 +42,8 @@ pub async fn export_clipboard_history_csv(
     db_state: State<'_, Arc<Mutex<Database>>>,
 ) -> Result<String, String> {
     let db = db_state.lock().await;
-    let items = db.get_history(None, None)
+    let items = db
+        .get_history(None, None)
         .await
         .map_err(|e| format!("履歴取得エラー: {}", e))?;
 
@@ -52,7 +54,7 @@ pub async fn export_clipboard_history_csv(
         // CSVエスケープ処理
         let escaped_content = escape_csv_field(&item.content);
         let source_app = item.source_app.as_deref().unwrap_or("");
-        
+
         csv_content.push_str(&format!(
             "{},{},{},{},{},{},{}\n",
             item.id,
@@ -82,7 +84,8 @@ pub async fn import_clipboard_history_json(
 
     for item in export_data.items {
         // 重複チェック
-        let existing_items = db.get_history(Some(1000), None)
+        let existing_items = db
+            .get_history(Some(1000), None)
             .await
             .map_err(|e| format!("既存履歴取得エラー: {}", e))?;
 
@@ -91,14 +94,15 @@ pub async fn import_clipboard_history_json(
         });
 
         if !is_duplicate {
-            let _saved_item = db.save_clipboard_item(
-                &item.content,
-                &item.content_type,
-                item.source_app.as_deref()
-            )
-            .await
-            .map_err(|e| format!("アイテム保存エラー: {}", e))?;
-            
+            let _saved_item = db
+                .save_clipboard_item(
+                    &item.content,
+                    &item.content_type,
+                    item.source_app.as_deref(),
+                )
+                .await
+                .map_err(|e| format!("アイテム保存エラー: {}", e))?;
+
             imported_count += 1;
         }
     }
@@ -108,10 +112,7 @@ pub async fn import_clipboard_history_json(
 
 /// エクスポートファイルを指定パスに保存
 #[tauri::command]
-pub async fn save_export_file(
-    file_path: String,
-    content: String,
-) -> Result<(), String> {
+pub async fn save_export_file(file_path: String, content: String) -> Result<(), String> {
     tokio::fs::write(&file_path, content)
         .await
         .map_err(|e| format!("ファイル保存エラー: {}", e))

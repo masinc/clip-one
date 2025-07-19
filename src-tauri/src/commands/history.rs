@@ -1,6 +1,6 @@
-use tauri::State;
-use crate::database::{Database, ClipboardItem};
+use crate::database::{ClipboardItem, Database};
 use std::sync::Arc;
+use tauri::State;
 use tokio::sync::Mutex;
 
 /// クリップボード履歴を取得
@@ -10,10 +10,24 @@ pub async fn get_clipboard_history(
     limit: Option<u32>,
     offset: Option<u32>,
 ) -> Result<Vec<ClipboardItem>, String> {
+    println!(
+        "get_clipboard_history コマンド呼び出し: limit={:?}, offset={:?}",
+        limit, offset
+    );
+
     let db = db_state.lock().await;
-    db.get_history(limit, offset)
-        .await
-        .map_err(|e| format!("履歴取得エラー: {}", e))
+
+    match db.get_history(limit, offset).await {
+        Ok(items) => {
+            println!("履歴取得成功: {} 件", items.len());
+            Ok(items)
+        }
+        Err(e) => {
+            let error_msg = format!("履歴取得エラー: {}", e);
+            println!("エラー: {}", error_msg);
+            Err(error_msg)
+        }
+    }
 }
 
 /// クリップボード履歴を検索
@@ -36,10 +50,11 @@ pub async fn get_clipboard_item(
     id: String,
 ) -> Result<Option<ClipboardItem>, String> {
     let db = db_state.lock().await;
-    let items = db.get_history(None, None)
+    let items = db
+        .get_history(None, None)
         .await
         .map_err(|e| format!("履歴取得エラー: {}", e))?;
-    
+
     let item = items.into_iter().find(|item| item.id == id);
     Ok(item)
 }
@@ -85,17 +100,19 @@ pub async fn get_clipboard_stats(
     db_state: State<'_, Arc<Mutex<Database>>>,
 ) -> Result<ClipboardStats, String> {
     let db = db_state.lock().await;
-    
-    let total_count = db.get_item_count()
+
+    let total_count = db
+        .get_item_count()
         .await
         .map_err(|e| format!("統計取得エラー: {}", e))?;
 
-    let items = db.get_history(None, None)
+    let items = db
+        .get_history(None, None)
         .await
         .map_err(|e| format!("履歴取得エラー: {}", e))?;
 
     let favorite_count = items.iter().filter(|item| item.is_favorite).count() as i64;
-    
+
     let content_type_counts = {
         let mut counts = std::collections::HashMap::new();
         for item in &items {
