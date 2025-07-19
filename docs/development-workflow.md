@@ -408,6 +408,8 @@ gh repo view
 ## テストと品質保証
 
 ### PR作成前
+- [ ] Biomeコード品質チェック: `npx biome check .`
+- [ ] Biome自動修正（必要に応じて）: `npx biome check --write .`
 - [ ] 型チェック実行: `pnpm tsc --noEmit`
 - [ ] テスト実行: `cargo test` (src-tauriディレクトリから)
 - [ ] Rustコードチェック: `cargo check`

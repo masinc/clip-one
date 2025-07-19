@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm tsc --noEmit)"
+      "Bash(pnpm tsc --noEmit)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.rs)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(git add:*)",
+      "Bash(gh pr list:*)",
+      "Bash(pnpm exec biome:*)"
     ],
     "deny": []
   }

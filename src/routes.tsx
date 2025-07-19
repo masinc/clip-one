@@ -1,8 +1,8 @@
 import { createBrowserRouter } from "react-router";
 import App from "./App";
+import ActionsSettings from "./pages/ActionsSettings";
 import Home from "./pages/Home";
 import Settings from "./pages/Settings";
-import ActionsSettings from "./pages/ActionsSettings";
 
 export const router = createBrowserRouter([
   {
