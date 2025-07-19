@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Save, X } from 'lucide-react';
-import type { GlobalAction } from '@/contexts/ActionsContext';
-import { getIconComponent, iconMap } from '@/utils/iconMapping';
+import { Save, X } from "lucide-react";
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { GlobalAction } from "@/contexts/ActionsContext";
+import { getIconComponent, iconMap } from "@/utils/iconMapping";
 
 interface ActionFormProps {
   action: GlobalAction;
@@ -17,13 +17,7 @@ interface ActionFormProps {
   onCancel: () => void;
 }
 
-export function ActionForm({ 
-  action, 
-  isCreating, 
-  contentTypes,
-  onSave, 
-  onCancel 
-}: ActionFormProps) {
+export function ActionForm({ action, isCreating, contentTypes, onSave, onCancel }: ActionFormProps) {
   const [formData, setFormData] = useState(action);
 
   const handleSave = () => {
@@ -33,9 +27,7 @@ export function ActionForm({
   return (
     <Card className="mb-4">
       <CardHeader>
-        <CardTitle className="text-sm">
-          {isCreating ? '新しいアクション' : 'アクション編集'}
-        </CardTitle>
+        <CardTitle className="text-sm">{isCreating ? "新しいアクション" : "アクション編集"}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -49,9 +41,11 @@ export function ActionForm({
 
         <div className="space-y-2">
           <Label>アクションタイプ</Label>
-          <Select 
-            value={formData.type} 
-            onValueChange={(value: 'url' | 'command' | 'code' | 'built-in') => setFormData({ ...formData, type: value })}
+          <Select
+            value={formData.type}
+            onValueChange={(value: "url" | "command" | "code" | "built-in") =>
+              setFormData({ ...formData, type: value })
+            }
           >
             <SelectTrigger>
               <SelectValue />
@@ -63,39 +57,38 @@ export function ActionForm({
             </SelectContent>
           </Select>
         </div>
-        
+
         <div className="space-y-2">
           <Label>
-            {formData.type === 'url' && 'URL'}
-            {formData.type === 'command' && 'コマンド'}
-            {formData.type === 'code' && 'JavaScriptコード'}
+            {formData.type === "url" && "URL"}
+            {formData.type === "command" && "コマンド"}
+            {formData.type === "code" && "JavaScriptコード"}
           </Label>
           <Input
-            value={formData.command || ''}
+            value={formData.command || ""}
             onChange={(e) => setFormData({ ...formData, command: e.target.value })}
             placeholder={
-              formData.type === 'url' ? 'https://example.com/?q=CONTENT' :
-              formData.type === 'command' ? 'echo "CONTENT" | pbcopy' :
-              'navigator.clipboard.writeText(CONTENT.toUpperCase())'
+              formData.type === "url"
+                ? "https://example.com/?q=CONTENT"
+                : formData.type === "command"
+                  ? 'echo "CONTENT" | pbcopy'
+                  : "navigator.clipboard.writeText(CONTENT.toUpperCase())"
             }
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label>説明（オプション）</Label>
           <Input
-            value={formData.description || ''}
+            value={formData.description || ""}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="アクションの説明"
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label>アイコン</Label>
-          <Select 
-            value={formData.icon} 
-            onValueChange={(value) => setFormData({ ...formData, icon: value })}
-          >
+          <Select value={formData.icon} onValueChange={(value) => setFormData({ ...formData, icon: value })}>
             <SelectTrigger>
               <SelectValue>
                 <div className="flex items-center gap-2">
@@ -105,7 +98,7 @@ export function ActionForm({
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {Object.keys(iconMap).map(iconName => {
+              {Object.keys(iconMap).map((iconName) => {
                 const IconComponent = getIconComponent(iconName);
                 return (
                   <SelectItem key={iconName} value={iconName}>
@@ -119,23 +112,28 @@ export function ActionForm({
             </SelectContent>
           </Select>
         </div>
-        
+
         <div className="space-y-2">
           <Label>キーワード（カンマ区切り）</Label>
           <Input
-            value={formData.keywords?.join(', ') || ''}
-            onChange={(e) => setFormData({ 
-              ...formData, 
-              keywords: e.target.value.split(',').map(k => k.trim()).filter(k => k.length > 0)
-            })}
+            value={formData.keywords?.join(", ") || ""}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                keywords: e.target.value
+                  .split(",")
+                  .map((k) => k.trim())
+                  .filter((k) => k.length > 0),
+              })
+            }
             placeholder="検索, ウェブ, Google"
           />
         </div>
-        
+
         <div className="space-y-3">
           <Label>対応コンテンツタイプ</Label>
           <div className="space-y-2">
-            {contentTypes.map(contentType => (
+            {contentTypes.map((contentType) => (
               <div key={contentType.value} className="flex items-center space-x-2">
                 <Checkbox
                   id={contentType.value}
@@ -144,12 +142,12 @@ export function ActionForm({
                     if (checked) {
                       setFormData({
                         ...formData,
-                        allowedContentTypes: [...formData.allowedContentTypes, contentType.value]
+                        allowedContentTypes: [...formData.allowedContentTypes, contentType.value],
                       });
                     } else {
                       setFormData({
                         ...formData,
-                        allowedContentTypes: formData.allowedContentTypes.filter(t => t !== contentType.value)
+                        allowedContentTypes: formData.allowedContentTypes.filter((t) => t !== contentType.value),
                       });
                     }
                   }}
@@ -161,15 +159,13 @@ export function ActionForm({
                   >
                     {contentType.label}
                   </label>
-                  <p className="text-xs text-muted-foreground">
-                    {contentType.description}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{contentType.description}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
-        
+
         <div className="flex justify-end gap-2 pt-4">
           <Button onClick={handleSave} size="sm">
             <Save className="h-4 w-4 mr-2" />

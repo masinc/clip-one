@@ -1,7 +1,7 @@
+import { Search } from "lucide-react";
 import { useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import type { ContextMenuState, ClipboardAction, DisplayClipboardItem } from "@/types/clipboardActions";
+import type { ClipboardAction, ContextMenuState, DisplayClipboardItem } from "@/types/clipboardActions";
 
 interface ContextMenuProps {
   contextMenu: ContextMenuState;
@@ -37,12 +37,15 @@ export function ContextMenu({
 
   return (
     <>
-      <div 
-        className="fixed inset-0 z-40" 
+      <div
+        role="button"
+        tabIndex={0}
+        className="fixed inset-0 z-40"
         onClick={() => {}} // Handle close in parent
+        onKeyDown={() => {}}
       />
-      
-      <div 
+
+      <div
         ref={menuRef}
         className="fixed z-50 bg-card text-card-foreground border border-border rounded-md shadow-lg py-1 min-w-40 max-h-80 flex flex-col"
         style={{
@@ -60,7 +63,7 @@ export function ContextMenu({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="h-6 text-xs border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 m-0 p-0 flex-1 text-foreground"
-              style={{ backgroundColor: 'transparent' }}
+              style={{ backgroundColor: "transparent" }}
               autoFocus
             />
           </div>
@@ -71,9 +74,10 @@ export function ContextMenu({
             <button
               key={action.id}
               className={`w-full text-left px-2 py-1.5 hover:bg-accent hover:text-accent-foreground flex items-center gap-2 text-xs ${
-                index === selectedActionIndex ? 'bg-accent text-accent-foreground' : ''
+                index === selectedActionIndex ? "bg-accent text-accent-foreground" : ""
               }`}
-              onClick={() => onExecuteAction(action, contextMenu.item!)}
+              type="button"
+              onClick={() => contextMenu.item && onExecuteAction(action, contextMenu.item)}
             >
               <action.icon className="h-3.5 w-3.5" />
               {action.label}
@@ -81,6 +85,7 @@ export function ContextMenu({
           ))}
           {hasMore && !searchQuery && (
             <button
+              type="button"
               className="w-full text-left px-2 py-1.5 hover:bg-accent hover:text-accent-foreground text-xs text-muted-foreground"
               onClick={onShowAllActions}
             >

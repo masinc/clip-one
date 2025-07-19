@@ -1,12 +1,12 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, RotateCcw as Reset } from 'lucide-react';
-import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import type { GlobalAction } from '@/contexts/ActionsContext';
-import { ActionItem } from './ActionItem';
+import { closestCenter, DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { Plus, RotateCcw as Reset } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { GlobalAction } from "@/contexts/ActionsContext";
+import { ActionItem } from "./ActionItem";
 
 interface ActionsListProps {
   actions: GlobalAction[];
@@ -43,25 +43,14 @@ export function ActionsList({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>グローバルアクション</CardTitle>
-            <CardDescription>
-              コンテキストメニューに表示されるアクションの設定
-            </CardDescription>
+            <CardDescription>コンテキストメニューに表示されるアクションの設定</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button
-              onClick={onResetToDefaults}
-              disabled={!!editingAction || isCreating}
-              variant="outline"
-              size="sm"
-            >
+            <Button onClick={onResetToDefaults} disabled={!!editingAction || isCreating} variant="outline" size="sm">
               <Reset className="h-4 w-4 mr-2" />
               リセット
             </Button>
-            <Button
-              onClick={onCreateNew}
-              disabled={!!editingAction || isCreating}
-              size="sm"
-            >
+            <Button onClick={onCreateNew} disabled={!!editingAction || isCreating} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               追加
             </Button>
@@ -70,21 +59,14 @@ export function ActionsList({
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[calc(100vh-250px)]">
-          <DndContext 
-            collisionDetection={closestCenter}
-            onDragEnd={onDragEnd}
-            modifiers={[restrictToVerticalAxis]}
-          >
-            <SortableContext 
-              items={actions.map(action => action.id)}
-              strategy={verticalListSortingStrategy}
-            >
+          <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd} modifiers={[restrictToVerticalAxis]}>
+            <SortableContext items={actions.map((action) => action.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-3">
                 {actions
                   .sort((a, b) => a.priority - b.priority)
                   .map((action) => (
-                    <ActionItem 
-                      key={action.id} 
+                    <ActionItem
+                      key={action.id}
                       action={action}
                       isExpanded={expandedActionId === action.id}
                       onToggle={onToggleAction}

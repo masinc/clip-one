@@ -13,7 +13,6 @@ export function getTypeIcon(type: string): string {
   switch (type) {
     case "url":
       return "🌐";
-    case "text":
     default:
       return "📝";
   }

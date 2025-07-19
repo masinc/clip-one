@@ -1,3 +1,6 @@
+import { invoke } from "@tauri-apps/api/core";
+import { Archive, Info, MoreHorizontal, Settings, Sliders } from "lucide-react";
+import { useNavigate } from "react-router";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -5,9 +8,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Settings, Sliders, Archive, Info } from "lucide-react";
-import { useNavigate } from "react-router";
-import { invoke } from '@tauri-apps/api/core';
 
 interface HomeHeaderProps {
   onHistoryReload: () => Promise<void>;
@@ -17,14 +17,14 @@ export function HomeHeader({ onHistoryReload }: HomeHeaderProps) {
   const navigate = useNavigate();
 
   const handleClearHistory = async () => {
-    if (confirm('すべての履歴を削除しますか？この操作は取り消せません。')) {
-      console.log('履歴クリア開始...');
+    if (confirm("すべての履歴を削除しますか？この操作は取り消せません。")) {
+      console.log("履歴クリア開始...");
       try {
-        await invoke('clear_clipboard_history');
-        console.log('履歴クリア完了');
+        await invoke("clear_clipboard_history");
+        console.log("履歴クリア完了");
         await onHistoryReload();
       } catch (err) {
-        console.error('履歴クリアエラー:', err);
+        console.error("履歴クリアエラー:", err);
       }
     }
   };
@@ -40,19 +40,16 @@ export function HomeHeader({ onHistoryReload }: HomeHeaderProps) {
                 <MoreHorizontal className="h-4 w-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
                   <Settings className="h-4 w-4" />
                   設定
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/actions-settings')}>
+                <DropdownMenuItem onClick={() => navigate("/actions-settings")}>
                   <Sliders className="h-4 w-4" />
                   アクション設定
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-red-600"
-                  onClick={handleClearHistory}
-                >
+                <DropdownMenuItem className="text-red-600" onClick={handleClearHistory}>
                   <Archive className="h-4 w-4" />
                   履歴をクリア
                 </DropdownMenuItem>
@@ -65,8 +62,8 @@ export function HomeHeader({ onHistoryReload }: HomeHeaderProps) {
             </DropdownMenu>
           </div>
         </div>
-        <input 
-          placeholder="履歴を検索..." 
+        <input
+          placeholder="履歴を検索..."
           className="search-input h-9 w-full bg-card text-foreground border border-border rounded-md px-3 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
         />
       </div>

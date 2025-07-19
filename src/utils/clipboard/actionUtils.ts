@@ -7,7 +7,7 @@ import { getIconComponent } from "@/utils/iconMapping";
  */
 export function convertToClipboardAction(action: GlobalAction): ClipboardAction {
   const IconComponent = getIconComponent(action.icon);
-  
+
   return {
     id: action.id,
     label: action.label,
@@ -22,7 +22,7 @@ export function convertToClipboardAction(action: GlobalAction): ClipboardAction 
     },
     execute: (content: string, _navigate?: (path: string) => void, _itemId?: string) => {
       if (!action.enabled) return;
-      
+
       switch (action.type) {
         case "url":
           if (action.command) {
@@ -68,7 +68,7 @@ export function convertToClipboardAction(action: GlobalAction): ClipboardAction 
  */
 export function searchActions(actions: ClipboardAction[], query: string): ClipboardAction[] {
   if (!query.trim()) return actions;
-  
+
   const lowercaseQuery = query.toLowerCase();
   return actions.filter(
     (action) =>
