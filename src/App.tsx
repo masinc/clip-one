@@ -1,6 +1,6 @@
 import { Outlet } from "react-router";
-import { ThemeProvider } from "./contexts/ThemeContext";
 import { ActionsProvider } from "./contexts/ActionsContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import "./App.css";
 
 function App() {

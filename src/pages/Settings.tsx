@@ -1,19 +1,31 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
-import { ArrowLeft, Monitor, Moon, Sun, Eye, Database, FileText, Download, Upload, Trash2, RotateCcw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import { useTheme } from '@/contexts/ThemeContext';
+import {
+  ArrowLeft,
+  Database,
+  Download,
+  Eye,
+  FileText,
+  Monitor,
+  Moon,
+  RotateCcw,
+  Sun,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [autoStart, setAutoStart] = useState(true);
-  const [maxHistory, setMaxHistory] = useState('1000');
+  const [maxHistory, setMaxHistory] = useState("1000");
   const [showPreview, setShowPreview] = useState(true);
   const [notifications, setNotifications] = useState(false);
 
@@ -22,12 +34,7 @@ const Settings = () => {
       {/* Header */}
       <div className="border-b">
         <div className="flex items-center gap-3 p-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/')}
-            className="h-8 w-8"
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-lg font-semibold">設定</h1>
@@ -36,7 +43,6 @@ const Settings = () => {
 
       {/* Settings Content */}
       <div className="p-6 space-y-6 max-w-2xl mx-auto">
-        
         {/* テーマ設定 */}
         <Card>
           <CardHeader>
@@ -44,9 +50,7 @@ const Settings = () => {
               <Monitor className="h-5 w-5" />
               テーマ
             </CardTitle>
-            <CardDescription>
-              アプリの外観を設定します
-            </CardDescription>
+            <CardDescription>アプリの外観を設定します</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -87,23 +91,19 @@ const Settings = () => {
               <Eye className="h-5 w-5" />
               表示設定
             </CardTitle>
-            <CardDescription>
-              クリップボード履歴の表示方法を設定します
-            </CardDescription>
+            <CardDescription>クリップボード履歴の表示方法を設定します</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>プレビュー表示</Label>
-                <div className="text-sm text-muted-foreground">
-                  テキストの先頭部分をプレビューします
-                </div>
+                <div className="text-sm text-muted-foreground">テキストの先頭部分をプレビューします</div>
               </div>
               <Switch checked={showPreview} onCheckedChange={setShowPreview} />
             </div>
-            
+
             <Separator />
-            
+
             <div className="space-y-2">
               <Label>表示件数</Label>
               <Select value={maxHistory} onValueChange={setMaxHistory}>
@@ -126,29 +126,23 @@ const Settings = () => {
         <Card>
           <CardHeader>
             <CardTitle>アプリケーション設定</CardTitle>
-            <CardDescription>
-              アプリの動作に関する設定
-            </CardDescription>
+            <CardDescription>アプリの動作に関する設定</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>スタートアップ時に起動</Label>
-                <div className="text-sm text-muted-foreground">
-                  システム起動時に自動的にアプリを開始します
-                </div>
+                <div className="text-sm text-muted-foreground">システム起動時に自動的にアプリを開始します</div>
               </div>
               <Switch checked={autoStart} onCheckedChange={setAutoStart} />
             </div>
-            
+
             <Separator />
-            
+
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>通知</Label>
-                <div className="text-sm text-muted-foreground">
-                  新しいクリップボード項目の通知を表示します
-                </div>
+                <div className="text-sm text-muted-foreground">新しいクリップボード項目の通知を表示します</div>
               </div>
               <Switch checked={notifications} onCheckedChange={setNotifications} />
             </div>
@@ -162,9 +156,7 @@ const Settings = () => {
               <Database className="h-5 w-5" />
               データ管理
             </CardTitle>
-            <CardDescription>
-              クリップボード履歴データの管理
-            </CardDescription>
+            <CardDescription>クリップボード履歴データの管理</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
@@ -174,7 +166,7 @@ const Settings = () => {
                   <span className="text-sm">エクスポート</span>
                 </div>
               </Button>
-              
+
               <Button variant="outline" className="h-auto p-4">
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="h-5 w-5" />
@@ -182,15 +174,15 @@ const Settings = () => {
                 </div>
               </Button>
             </div>
-            
+
             <Separator />
-            
+
             <div className="space-y-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full justify-start"
                 onClick={() => {
-                  if (confirm('すべての履歴を削除しますか？この操作は取り消せません。')) {
+                  if (confirm("すべての履歴を削除しますか？この操作は取り消せません。")) {
                     // TODO: 履歴削除処理
                   }
                 }}
@@ -198,12 +190,12 @@ const Settings = () => {
                 <Trash2 className="h-4 w-4 mr-2" />
                 すべての履歴を削除
               </Button>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 className="w-full justify-start"
                 onClick={() => {
-                  if (confirm('設定をリセットしますか？')) {
+                  if (confirm("設定をリセットしますか？")) {
                     // TODO: 設定リセット処理
                   }
                 }}
