@@ -30,6 +30,7 @@ ClipOneは、クリップボード操作に特化したTauriフレームワー�
 - **Tailwind CSS** - ユーティリティファーストCSS
 - **shadcn/ui** - 再利用可能なUIコンポーネント
 - **Vite** - 高速ビルドツール
+- **Biome** - 高速なリンター・フォーマッター
 
 ### 2.1 コンポーネント構造
 
@@ -614,6 +615,9 @@ pnpm add lucide-react @radix-ui/react-*
 pnpm add @tauri-apps/api @tauri-apps/plugin-opener
 pnpm add tauri-plugin-clipboard-api
 
+# 開発ツール
+pnpm add -D @biomejs/biome
+
 # Rust依存関係 (src-tauri/Cargo.toml)
 [dependencies]
 tauri = { version = "2", features = ["devtools"] }
@@ -621,6 +625,19 @@ tauri-plugin-clipboard = "2.1.11"
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
+```
+
+#### Biome設定
+
+```bash
+# Biome初期化
+npx biome init
+
+# コード品質チェック
+npx biome check .
+
+# 自動修正
+npx biome check --write .
 ```
 
 #### Tailwind CSS設定
@@ -655,6 +672,12 @@ pnpm build
 
 # 型チェック
 pnpm tsc --noEmit
+
+# コード品質チェック
+npx biome check .
+
+# 自動修正
+npx biome check --write .
 ```
 
 #### Tauri開発

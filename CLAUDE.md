@@ -60,6 +60,12 @@
 # 開発開始
 pnpm tauri dev
 
+# コード品質チェック
+npx biome check .
+
+# 自動修正
+npx biome check --write .
+
 # 型チェック
 pnpm tsc --noEmit
 
@@ -144,6 +150,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - `src-tauri/Cargo.toml` - Rust依存関係
 - `tsconfig.json` - TypeScript設定
 - `vite.config.ts` - Vite設定
+- `biome.json` - コード品質・フォーマット設定
 
 ### データ保存場所
 ```
@@ -155,6 +162,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ## 🧪 テスト要件
 
 ### PR作成前チェックリスト
+- [ ] **コード品質**: `npx biome check .` (エラー0個必須)
 - [ ] 型チェック: `pnpm tsc --noEmit`
 - [ ] Rustテスト: `cargo test` (src-tauriから)
 - [ ] ビルド確認: `pnpm build`
