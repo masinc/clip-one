@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import type { ClipboardItem } from '@/types/clipboard';
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useCallback, useEffect, useState } from "react";
+import type { ClipboardItem } from "@/types/clipboard";
 
 export interface ClipboardHook {
   currentText: string;
@@ -16,7 +16,7 @@ export interface ClipboardHook {
 }
 
 export function useClipboard(): ClipboardHook {
-  const [currentText, setCurrentText] = useState<string>('');
+  const [currentText, setCurrentText] = useState<string>("");
   const [isMonitoring, setIsMonitoring] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [eventUnlisten, setEventUnlisten] = useState<UnlistenFn | null>(null);
@@ -26,7 +26,7 @@ export function useClipboard(): ClipboardHook {
   const readClipboard = useCallback(async (): Promise<string> => {
     try {
       clearError();
-      const text = await invoke<string>('get_clipboard_text');
+      const text = await invoke<string>("get_clipboard_text");
       setCurrentText(text);
       return text;
     } catch (err) {
@@ -36,22 +36,25 @@ export function useClipboard(): ClipboardHook {
     }
   }, [clearError]);
 
-  const writeClipboard = useCallback(async (text: string): Promise<void> => {
-    try {
-      clearError();
-      await invoke('set_clipboard_text', { text });
-      setCurrentText(text);
-    } catch (err) {
-      const errorMsg = `クリップボード書き込みエラー: ${err}`;
-      setError(errorMsg);
-      throw new Error(errorMsg);
-    }
-  }, [clearError]);
+  const writeClipboard = useCallback(
+    async (text: string): Promise<void> => {
+      try {
+        clearError();
+        await invoke("set_clipboard_text", { text });
+        setCurrentText(text);
+      } catch (err) {
+        const errorMsg = `クリップボード書き込みエラー: ${err}`;
+        setError(errorMsg);
+        throw new Error(errorMsg);
+      }
+    },
+    [clearError],
+  );
 
   const hasClipboardText = useCallback(async (): Promise<boolean> => {
     try {
       clearError();
-      return await invoke<boolean>('has_clipboard_text');
+      return await invoke<boolean>("has_clipboard_text");
     } catch (err) {
       const errorMsg = `クリップボード状態チェックエラー: ${err}`;
       setError(errorMsg);
@@ -62,8 +65,8 @@ export function useClipboard(): ClipboardHook {
   const clearClipboard = useCallback(async (): Promise<void> => {
     try {
       clearError();
-      await invoke('clear_clipboard_text');
-      setCurrentText('');
+      await invoke("clear_clipboard_text");
+      setCurrentText("");
     } catch (err) {
       const errorMsg = `クリップボードクリアエラー: ${err}`;
       setError(errorMsg);
@@ -71,56 +74,59 @@ export function useClipboard(): ClipboardHook {
     }
   }, [clearError]);
 
-  const startMonitoring = useCallback(async (onUpdate?: (text: string) => void): Promise<void> => {
-    try {
-      clearError();
-      
-      if (isMonitoring) {
-        console.log('クリップボード監視は既に開始されています');
-        return;
+  const startMonitoring = useCallback(
+    async (onUpdate?: (text: string) => void): Promise<void> => {
+      try {
+        clearError();
+
+        if (isMonitoring) {
+          console.log("クリップボード監視は既に開始されています");
+          return;
+        }
+
+        console.log("🚀 Rustイベントベースのクリップボード監視を開始...");
+
+        // Rustのイベントをリッスン
+        const unlisten = await listen<ClipboardItem>("clipboard-updated", (event) => {
+          console.log("📨 Rustからclipboard-updatedイベント受信:", event.payload);
+          const item = event.payload;
+          setCurrentText(item.content);
+          onUpdate?.(item.content);
+        });
+
+        setEventUnlisten(() => unlisten);
+
+        // Rust側で監視開始
+        await invoke("start_clipboard_monitoring");
+
+        // 監視状態を確認
+        const monitoringStatus = await invoke<boolean>("get_monitoring_status");
+        setIsMonitoring(monitoringStatus);
+
+        console.log("✅ Rustイベントベースのクリップボード監視を開始しました");
+      } catch (err) {
+        const errorMsg = `クリップボード監視開始エラー: ${err}`;
+        console.error("❌", errorMsg);
+        setError(errorMsg);
+        throw new Error(errorMsg);
       }
-
-      console.log('🚀 Rustイベントベースのクリップボード監視を開始...');
-
-      // Rustのイベントをリッスン
-      const unlisten = await listen<ClipboardItem>('clipboard-updated', (event) => {
-        console.log('📨 Rustからclipboard-updatedイベント受信:', event.payload);
-        const item = event.payload;
-        setCurrentText(item.content);
-        onUpdate?.(item.content);
-      });
-
-      setEventUnlisten(() => unlisten);
-
-      // Rust側で監視開始
-      await invoke('start_clipboard_monitoring');
-      
-      // 監視状態を確認
-      const monitoringStatus = await invoke<boolean>('get_monitoring_status');
-      setIsMonitoring(monitoringStatus);
-      
-      console.log('✅ Rustイベントベースのクリップボード監視を開始しました');
-    } catch (err) {
-      const errorMsg = `クリップボード監視開始エラー: ${err}`;
-      console.error('❌', errorMsg);
-      setError(errorMsg);
-      throw new Error(errorMsg);
-    }
-  }, [isMonitoring, clearError]);
+    },
+    [isMonitoring, clearError],
+  );
 
   const stopMonitoring = useCallback(async (): Promise<void> => {
     try {
       clearError();
-      
+
       if (!isMonitoring) {
-        console.log('クリップボード監視は既に停止されています');
+        console.log("クリップボード監視は既に停止されています");
         return;
       }
 
-      console.log('🛑 Rustイベントベースのクリップボード監視を停止...');
+      console.log("🛑 Rustイベントベースのクリップボード監視を停止...");
 
       // Rust側で監視停止
-      await invoke('stop_clipboard_monitoring');
+      await invoke("stop_clipboard_monitoring");
 
       // イベントリスナーを停止
       if (eventUnlisten) {
@@ -129,7 +135,7 @@ export function useClipboard(): ClipboardHook {
       }
 
       setIsMonitoring(false);
-      console.log('✅ クリップボード監視を停止しました');
+      console.log("✅ クリップボード監視を停止しました");
     } catch (err) {
       const errorMsg = `クリップボード監視停止エラー: ${err}`;
       setError(errorMsg);
