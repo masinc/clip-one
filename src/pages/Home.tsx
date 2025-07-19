@@ -128,7 +128,7 @@ export default function Home() {
       console.log("Home コンポーネントクリーンアップ");
       clipboard.stopMonitoring().catch(console.error);
     };
-  }, [loadClipboardHistory, clipboard]); // 依存関係を明示
+  }, []); // 初期化時のみ実行
 
   // コンテキストからアクションを取得して変換する関数
   const getClipboardActions = () => {
