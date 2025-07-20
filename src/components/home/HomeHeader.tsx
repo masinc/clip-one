@@ -10,10 +10,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface HomeHeaderProps {
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
   onHistoryReload: () => Promise<void>;
 }
 
-export function HomeHeader({ onHistoryReload }: HomeHeaderProps) {
+export function HomeHeader({ searchQuery, onSearchChange, onHistoryReload }: HomeHeaderProps) {
   const navigate = useNavigate();
 
   const handleClearHistory = async () => {
@@ -63,7 +65,10 @@ export function HomeHeader({ onHistoryReload }: HomeHeaderProps) {
           </div>
         </div>
         <input
+          type="text"
           placeholder="履歴を検索..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
           className="search-input h-9 w-full bg-card text-foreground border border-border rounded-md px-3 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
         />
       </div>

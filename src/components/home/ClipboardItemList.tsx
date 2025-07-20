@@ -108,7 +108,16 @@ export function ClipboardItemList({
             </div>
 
             <div className="flex-shrink-0">
-              <Button variant="ghost" size="icon" className="h-6 w-6">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 cursor-pointer hover:bg-accent"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(item.content);
+                }}
+                title="クリップボードにコピー"
+              >
                 <Copy className="h-3 w-3" />
               </Button>
             </div>

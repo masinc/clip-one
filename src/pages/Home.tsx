@@ -37,6 +37,7 @@ export default function Home() {
     originalY: 0,
     item: null,
   });
+  const [historySearchQuery, setHistorySearchQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedActionIndex, setSelectedActionIndex] = useState(-1);
   const [showAllActions, setShowAllActions] = useState(false);
@@ -60,6 +61,12 @@ export default function Home() {
       setLoading(false);
     }
   }, []);
+
+  // 履歴アイテムをフィルタリング
+  const filteredClipboardItems = clipboardItems.filter((item) => {
+    if (!historySearchQuery.trim()) return true;
+    return item.content.toLowerCase().includes(historySearchQuery.toLowerCase());
+  });
 
   // 初期化（一度だけ実行）
   useEffect(() => {
@@ -258,12 +265,16 @@ export default function Home() {
         }
       }}
     >
-      <HomeHeader onHistoryReload={loadClipboardHistory} />
+      <HomeHeader
+        searchQuery={historySearchQuery}
+        onSearchChange={setHistorySearchQuery}
+        onHistoryReload={loadClipboardHistory}
+      />
 
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <ClipboardItemList
-            clipboardItems={clipboardItems}
+            clipboardItems={filteredClipboardItems}
             loading={loading}
             error={error}
             onHistoryReload={loadClipboardHistory}
@@ -296,7 +307,7 @@ export default function Home() {
       )}
 
       <HomeFooter
-        clipboardItems={clipboardItems}
+        clipboardItems={filteredClipboardItems}
         loading={loading}
         clipboard={clipboard}
         onHistoryReload={loadClipboardHistory}
