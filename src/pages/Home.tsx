@@ -41,7 +41,6 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedActionIndex, setSelectedActionIndex] = useState(-1);
   const [showAllActions, setShowAllActions] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   // 履歴データを取得（単純化）
   const loadClipboardHistory = useCallback(async () => {
@@ -220,18 +219,6 @@ export default function Home() {
     }, 0);
   };
 
-  // アイテムの展開/縮小をトグル
-  const toggleItemExpansion = (itemId: string) => {
-    setExpandedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId);
-      } else {
-        newSet.add(itemId);
-      }
-      return newSet;
-    });
-  };
 
   // アクションを実行
   const executeAction = (action: ClipboardAction, item: DisplayClipboardItem) => {
@@ -291,8 +278,6 @@ export default function Home() {
             clipboardItems={filteredClipboardItems}
             loading={loading}
             error={error}
-            expandedItems={expandedItems}
-            onItemClick={toggleItemExpansion}
             onHistoryReload={loadClipboardHistory}
             onContextMenu={handleContextMenu}
           />

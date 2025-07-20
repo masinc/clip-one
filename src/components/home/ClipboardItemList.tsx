@@ -10,8 +10,6 @@ interface ClipboardItemListProps {
   clipboardItems: DisplayClipboardItem[];
   loading: boolean;
   error: string | null;
-  expandedItems: Set<string>;
-  onItemClick: (itemId: string) => void;
   onHistoryReload: () => Promise<void>;
   onContextMenu: (e: React.MouseEvent, item: DisplayClipboardItem) => void;
 }
@@ -20,8 +18,6 @@ export function ClipboardItemList({
   clipboardItems,
   loading,
   error,
-  expandedItems,
-  onItemClick,
   onHistoryReload,
   onContextMenu,
 }: ClipboardItemListProps) {
@@ -85,9 +81,6 @@ export function ClipboardItemList({
   return (
     <div className="p-2">
       {clipboardItems.map((item, index) => {
-        const isExpanded = expandedItems.has(item.id);
-        const shouldTruncate = item.content.length > 100;
-        const displayContent = isExpanded || !shouldTruncate ? item.content : truncateText(item.content);
 
         return (
           <Card
@@ -100,11 +93,7 @@ export function ClipboardItemList({
                 <span className="text-xs">{getTypeIcon(item.type)}</span>
               </div>
 
-              <button
-                type="button"
-                className="flex-1 min-w-0 cursor-pointer text-left bg-transparent border-none p-0"
-                onClick={() => onItemClick(item.id)}
-              >
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <Hash className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs font-mono text-muted-foreground">{index + 1}</span>
@@ -115,21 +104,16 @@ export function ClipboardItemList({
                   {item.app && (
                     <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">{item.app}</span>
                   )}
-                  {shouldTruncate && (
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {isExpanded ? "クリックで縮小" : "クリックで展開"}
-                    </span>
-                  )}
                 </div>
 
-                <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{displayContent}</p>
-              </button>
+                <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{truncateText(item.content)}</p>
+              </div>
 
               <div className="flex-shrink-0 ml-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-6 w-6 hover:bg-accent"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigator.clipboard.writeText(item.content);
