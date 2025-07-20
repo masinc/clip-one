@@ -120,10 +120,74 @@ impl Database {
                 .await?;
         }
 
+        // バージョン2のマイグレーション（形式サポート拡張）
+        let migration_sql_v2 = include_str!("../../migrations/002_format_support.sql");
+        
+        let version_2_exists: bool =
+            sqlx::query_scalar("SELECT 1 FROM schema_version WHERE version = 2")
+                .fetch_optional(&self.pool)
+                .await?
+                .unwrap_or(false);
+
+        if !version_2_exists {
+            // マイグレーションを実行
+            sqlx::query(migration_sql_v2).execute(&self.pool).await?;
+
+            // バージョンを記録
+            sqlx::query("INSERT INTO schema_version (version) VALUES (2)")
+                .execute(&self.pool)
+                .await?;
+        }
+
         Ok(())
     }
 
-    /// クリップボードアイテムを保存
+    /// クリップボードアイテムを保存（拡張版）
+    pub async fn save_clipboard_item_with_formats(
+        &self,
+        content: &str,
+        content_type: &str,
+        source_app: Option<&str>,
+        available_formats: &[String],
+        primary_format: &str,
+    ) -> Result<ClipboardItem> {
+        let id = Uuid::new_v4().to_string();
+        let timestamp = Utc::now().timestamp_millis();
+        let created_at = Utc::now();
+        let data_size = content.len() as i64;
+        let formats_json = serde_json::to_string(available_formats).unwrap_or_else(|_| "[]".to_string());
+
+        let item = ClipboardItem {
+            id: id.clone(),
+            content: content.to_string(),
+            content_type: content_type.to_string(),
+            timestamp,
+            is_favorite: false,
+            source_app: source_app.map(String::from),
+            created_at,
+        };
+
+        sqlx::query(
+            "INSERT INTO clipboard_items (id, content, content_type, timestamp, is_favorite, source_app, created_at, available_formats, primary_format, data_size)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(&item.id)
+        .bind(&item.content)
+        .bind(&item.content_type)
+        .bind(item.timestamp)
+        .bind(item.is_favorite)
+        .bind(&item.source_app)
+        .bind(&item.created_at)
+        .bind(&formats_json)
+        .bind(primary_format)
+        .bind(data_size)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(item)
+    }
+
+    /// クリップボードアイテムを保存（従来版 - 後方互換性のため）
     pub async fn save_clipboard_item(
         &self,
         content: &str,

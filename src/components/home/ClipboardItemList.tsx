@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { DisplayClipboardItem } from "@/types/clipboardActions";
 import { formatRelativeTime } from "@/utils/dateUtils";
-import { getTypeIcon, truncateText } from "@/utils/textUtils";
+import { getTypeIcon, getTypeName, truncateText } from "@/utils/textUtils";
 
 interface ClipboardItemListProps {
   clipboardItems: DisplayClipboardItem[];
@@ -112,9 +112,9 @@ export function ClipboardItemList({
                     <Clock className="h-3 w-3" />
                     {formatRelativeTime(item.timestamp)}
                   </div>
-                  {item.app && (
-                    <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">{item.app}</span>
-                  )}
+                  <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+                    {getTypeName(item.type)}
+                  </span>
                 </div>
 
                 <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{displayContent}</p>

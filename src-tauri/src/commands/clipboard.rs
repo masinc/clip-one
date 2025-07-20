@@ -1,6 +1,7 @@
 use crate::database::{ClipboardItem, Database};
 use clipboard_rs::{
     Clipboard, ClipboardContext, ClipboardHandler, ClipboardWatcher, ClipboardWatcherContext,
+    ContentFormat,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -56,6 +57,15 @@ impl ClipboardHandler for ClipboardManager {
             }
         };
 
+        // 簡単な形式判定（従来の方法）
+        let detected_format = if current_content.starts_with("http://") || current_content.starts_with("https://") {
+            "text/uri-list"
+        } else {
+            "text/plain"
+        }.to_string();
+        
+        let available_formats = vec![detected_format.clone()];
+
         // 重複チェック
         if current_content == self.last_content || current_content.is_empty() {
             return;
@@ -71,6 +81,8 @@ impl ClipboardHandler for ClipboardManager {
         let app_clone = self.app.clone();
         let db_clone = Arc::clone(&self.db);
         let content_clone = current_content.clone();
+        let format_clone = detected_format.clone();
+        let formats_clone = available_formats.clone();
 
         // 新しいランタイムで非同期処理を実行
         std::thread::spawn(move || {
@@ -92,17 +104,14 @@ impl ClipboardHandler for ClipboardManager {
                     .any(|item| item.content == content_clone);
 
                 if !is_duplicate {
-                    // コンテンツタイプ判定
-                    let content_type = if content_clone.starts_with("http://")
-                        || content_clone.starts_with("https://")
-                    {
-                        "text/uri-list"
-                    } else {
-                        "text/plain"
-                    };
-
                     match db
-                        .save_clipboard_item(&content_clone, content_type, Some("clipboard-rs"))
+                        .save_clipboard_item_with_formats(
+                            &content_clone, 
+                            &format_clone, 
+                            Some("clipboard-rs"),
+                            &formats_clone,
+                            &format_clone
+                        )
                         .await
                     {
                         Ok(saved_item) => {
@@ -349,4 +358,96 @@ pub async fn clear_clipboard_text() -> Result<(), String> {
 
     ctx.set_text("".to_string())
         .map_err(|e| format!("クリップボードクリアエラー: {}", e))
+}
+
+/// クリップボードで利用可能な形式を検出
+fn detect_clipboard_formats(ctx: &ClipboardContext) -> Vec<String> {
+    let mut formats = Vec::new();
+    
+    if ctx.has(ContentFormat::Text) {
+        formats.push("text/plain".to_string());
+    }
+    if ctx.has(ContentFormat::Html) {
+        formats.push("text/html".to_string());
+    }
+    if ctx.has(ContentFormat::Rtf) {
+        formats.push("text/rtf".to_string());
+    }
+    if ctx.has(ContentFormat::Image) {
+        formats.push("image/png".to_string());
+    }
+    if ctx.has(ContentFormat::Files) {
+        formats.push("application/x-file-list".to_string());
+    }
+    
+    formats
+}
+
+/// 優先順位に従ってクリップボードコンテンツを取得
+fn get_clipboard_content_by_priority(ctx: &ClipboardContext) -> Result<(String, String), String> {
+    // 優先順位: HTML > RTF > Files > Image > Text
+    
+    if ctx.has(ContentFormat::Html) {
+        match ctx.get_html() {
+            Ok(html) => return Ok((html, "text/html".to_string())),
+            Err(e) => println!("HTML取得エラー: {}", e),
+        }
+    }
+    
+    if ctx.has(ContentFormat::Rtf) {
+        match ctx.get_rich_text() {
+            Ok(rtf) => return Ok((rtf, "text/rtf".to_string())),
+            Err(e) => println!("RTF取得エラー: {}", e),
+        }
+    }
+    
+    if ctx.has(ContentFormat::Files) {
+        match ctx.get_files() {
+            Ok(files) => {
+                let files_text = files.join("\n");
+                return Ok((files_text, "application/x-file-list".to_string()));
+            },
+            Err(e) => println!("ファイルリスト取得エラー: {}", e),
+        }
+    }
+    
+    if ctx.has(ContentFormat::Image) {
+        match ctx.get_image() {
+            Ok(_image_data) => {
+                // 画像が利用可能であることを示すプレースホルダー
+                let placeholder = "[画像データ - 表示には今後対応予定]".to_string();
+                return Ok((placeholder, "image/png".to_string()));
+            },
+            Err(e) => println!("画像取得エラー: {}", e),
+        }
+    }
+    
+    // フォールバック: テキスト
+    if ctx.has(ContentFormat::Text) {
+        let text = ctx.get_text().map_err(|e| format!("テキスト取得エラー: {}", e))?;
+        // テキストの内容を詳細分析してより正確な形式判定
+        let format = analyze_text_format(&text);
+        return Ok((text, format));
+    }
+    
+    Err("利用可能なクリップボード形式がありません".to_string())
+}
+
+/// テキストの内容を分析してより正確な形式を判定
+fn analyze_text_format(text: &str) -> String {
+    if text.starts_with("http://") || text.starts_with("https://") {
+        "text/uri-list".to_string()
+    } else if text.starts_with("data:image/") {
+        "image/png".to_string()
+    } else if text.starts_with("data:") {
+        "application/octet-stream".to_string()
+    } else if text.contains("<html") || text.contains("</html>") {
+        "text/html".to_string()
+    } else if text.starts_with("{\\rtf") {
+        "text/rtf".to_string()
+    } else if text.starts_with("/") || text.starts_with("C:\\") || text.contains("\\") {
+        "application/x-file-path".to_string()
+    } else {
+        "text/plain".to_string()
+    }
 }
