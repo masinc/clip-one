@@ -1,19 +1,38 @@
-# ClipOne - Specification
+# ClipOne - Application Specification
 
 ## Overview
-Desktop clipboard history manager built with Tauri + React + TypeScript + Rust.
+ClipOne is a desktop clipboard history management application built with Tauri + React + TypeScript + Rust.
 
-**Users**: Developers, writers, office workers
+**Target Users**: Developers, writers, office workers who frequently use copy & paste
 
 ## Core Features
-- Automatic clipboard monitoring
-- History storage/display  
-- Search (substring match)
-- Favorites
-- Export/Import (JSON, CSV)
-- Local SQLite storage
 
-## Data Schema
+### Clipboard Monitoring & History
+- Automatic clipboard change detection
+- History storage and display
+- Real-time synchronization
+
+### History Management
+- Timeline-based history view
+- Search functionality (substring match)
+- Delete individual items or clear all
+- Favorites feature
+
+### Data Operations
+- Local SQLite storage
+- Export/Import (JSON, CSV)
+- Settings persistence
+
+## Technical Architecture
+
+### Data Storage
+```
+~/.clipone/
+├── clipone.db       # SQLite (clipboard history)
+└── settings.json    # App settings
+```
+
+### Database Schema
 ```sql
 CREATE TABLE clipboard_items (
     id TEXT PRIMARY KEY,
@@ -25,7 +44,7 @@ CREATE TABLE clipboard_items (
 );
 ```
 
-## Types
+### Core Data Types
 ```typescript
 interface ClipboardItem {
   id: string;
@@ -33,5 +52,12 @@ interface ClipboardItem {
   timestamp: number;
   is_favorite: boolean;
   source_app?: string;
+}
+
+interface AppSettings {
+  max_history_items: number;
+  auto_start: boolean;
+  theme: 'light' | 'dark';
+  hotkeys: Record<string, string>;
 }
 ```
