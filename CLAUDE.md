@@ -35,6 +35,11 @@ cargo check            # Rust check (from src-tauri)
 - [@docs/architecture.md](/docs/architecture.md) - Technical architecture
 - [@docs/development-workflow.md](/docs/development-workflow.md) - Detailed workflow
 
+## Documentation (Japanese)
+- [@docs/specification.ja.md](/docs/specification.ja.md) - アプリケーション仕様書
+- [@docs/architecture.ja.md](/docs/architecture.ja.md) - 技術アーキテクチャ
+- [@docs/development-workflow.ja.md](/docs/development-workflow.ja.md) - 開発ワークフロー
+
 ## Pre-PR Checklist
 - [ ] `npx biome check .` (0 errors)
 - [ ] `pnpm tsc --noEmit`
