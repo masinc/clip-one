@@ -49,22 +49,28 @@ impl ClipboardHandler for ClipboardManager {
             }
         };
 
-        let current_content = match ctx.get_text() {
-            Ok(content) => content,
+        // 利用可能な形式を検出
+        let available_formats = detect_clipboard_formats(&ctx);
+        println!("🔍 検出された形式: {:?}", available_formats);
+
+        // 優先順位に従ってコンテンツを取得
+        let (current_content, detected_format) = match get_clipboard_content_by_priority(&ctx) {
+            Ok(content_info) => content_info,
             Err(e) => {
                 eprintln!("❌ クリップボード読み取りエラー: {}", e);
-                return;
+                // フォールバック: 基本テキスト取得を試行
+                match ctx.get_text() {
+                    Ok(text) => {
+                        println!("⚠️ フォールバック: テキストとして取得");
+                        (text, "text/plain".to_string())
+                    },
+                    Err(text_err) => {
+                        eprintln!("❌ フォールバック失敗: {}", text_err);
+                        return;
+                    }
+                }
             }
         };
-
-        // 簡単な形式判定（従来の方法）
-        let detected_format = if current_content.starts_with("http://") || current_content.starts_with("https://") {
-            "text/uri-list"
-        } else {
-            "text/plain"
-        }.to_string();
-        
-        let available_formats = vec![detected_format.clone()];
 
         // 重複チェック
         if current_content == self.last_content || current_content.is_empty() {
@@ -414,9 +420,10 @@ fn get_clipboard_content_by_priority(ctx: &ClipboardContext) -> Result<(String, 
     if ctx.has(ContentFormat::Image) {
         match ctx.get_image() {
             Ok(_image_data) => {
-                // 画像が利用可能であることを示すプレースホルダー
-                let placeholder = "[画像データ - 表示には今後対応予定]".to_string();
-                return Ok((placeholder, "image/png".to_string()));
+                // 画像データが検出されたことを示す
+                let image_info = "[画像データ]".to_string();
+                println!("📸 画像検出成功");
+                return Ok((image_info, "image/png".to_string()));
             },
             Err(e) => println!("画像取得エラー: {}", e),
         }
