@@ -1,145 +1,38 @@
-# ClipOne - アプリケーション仕様書
+# ClipOne - Application Specification
 
-## 1. 概要
+## Overview
+ClipOne is a desktop clipboard history management application built with Tauri + React + TypeScript + Rust.
 
-ClipOneは、クリップボード操作と履歴管理に特化したデスクトップアプリケーションです。シンプルで直感的なUIを提供し、効率的なクリップボード管理を実現します。このアプリケーションは、頻繁にコピー&ペースト操作を行うユーザーの生産性向上を目的としています。
+**Target Users**: Developers, writers, office workers who frequently use copy & paste
 
-## 2. ターゲットユーザー
+## Core Features
 
-- **主要**: 頻繁にコピー&ペースト操作を行う開発者、ライター、事務職
-- **副次**: テキスト編集を多用するすべてのPCユーザー
-- **ユーザー特性**:
-  - 効率的な作業環境を求める
-  - 複数のアプリケーション間でのデータ移動が多い
-  - クリップボード履歴の管理が必要
+### Clipboard Monitoring & History
+- Automatic clipboard change detection
+- History storage and display
+- Real-time synchronization
 
-## 3. コア機能
+### History Management
+- Timeline-based history view
+- Search functionality (substring match)
+- Delete individual items or clear all
+- Favorites feature
 
-### 3.1 クリップボード監視と履歴管理
+### Data Operations
+- Local SQLite storage
+- Export/Import (JSON, CSV)
+- Settings persistence
 
-- **説明**: クリップボードの変更を自動的に監視し、履歴として保存する主要機能
-- **ユーザーフロー**:
-  1. アプリケーション起動時に自動的にクリップボード監視を開始
-  2. ユーザーが任意のアプリケーションでテキストをコピー
-  3. コピーされたテキストが自動的に履歴に追加
-  4. 履歴からテキストを選択して再利用
+## Technical Architecture
 
-### 3.2 履歴ビューア
-
-- **機能**:
-  - 時系列での履歴表示
-  - 検索機能（部分文字列マッチ）
-  - 履歴アイテムの削除
-  - 履歴の完全クリア
-  - お気に入り機能
-
-### 3.3 クリップボード操作
-
-- **機能**:
-  - 履歴アイテムをクリップボードに復元
-  - 手動でのテキスト追加
-  - テキストの編集機能
-  - 重複アイテムの自動削除
-
-### 3.4 データ管理
-
-- **機能**:
-  - 履歴のローカル保存
-  - データのエクスポート（JSON, TXT形式）
-  - データのインポート
-  - 設定の保存と復元
-
-## 4. 技術アーキテクチャ
-
-### 4.1 アプリケーション構造
-
-```
-フロントエンド (React + TypeScript)
-├── ユーザーインターフェース
-├── 状態管理
-├── クリップボード操作レイヤー
-└── 設定管理
-
-バックエンド (Rust + Tauri)
-├── クリップボード監視サービス
-├── ファイルシステム操作
-├── 履歴データ管理
-└── 設定管理
-```
-
-### 4.2 データフロー
-
-```
-クリップボード変更 → 監視サービス → 履歴保存 → UI更新
-                                    ↓
-                              ファイルシステム保存
-
-ユーザー操作 → フロントエンド → バックエンド → クリップボード設定
-```
-
-## 5. ユーザーインターフェース仕様
-
-### 5.1 メインウィンドウ
-
-- **レイアウト**: シンプルな単一ペイン設計
-- **コンポーネント**:
-  - 履歴リスト（メインエリア）
-  - 検索バー（上部）
-  - アクションボタン（下部）
-  - ステータスバー（最下部）
-
-### 5.2 履歴リスト
-
-- **表示項目**:
-  - テキスト内容（最初の50文字）
-  - コピー日時
-  - アイテム番号
-  - お気に入りアイコン
-- **操作**:
-  - クリックでクリップボードに設定
-  - 右クリックでコンテキストメニュー
-  - ダブルクリックで詳細表示
-
-### 5.3 コンテキストメニュー
-
-- **メニュー項目**:
-  - クリップボードに設定
-  - 詳細表示
-  - 編集
-  - お気に入りに追加/削除
-  - 削除
-
-### 5.4 設定ウィンドウ
-
-- **設定項目**:
-  - 最大履歴数
-  - 自動起動設定
-  - ホットキー設定
-  - テーマ選択
-  - エクスポート/インポート
-
-### 5.5 検索機能
-
-- **検索方式**: リアルタイム部分文字列検索
-- **検索対象**: 履歴アイテムのテキスト内容
-- **UI**: 上部の検索バー
-
-## 6. データ管理
-
-### 6.1 データ保存方式
-
-クリップボード履歴はSQLiteデータベース、アプリケーション設定はJSONファイルに保存:
-
+### Data Storage
 ```
 ~/.clipone/
-├── clipone.db            # SQLiteデータベース（クリップボード履歴）
-└── settings.json         # アプリケーション設定
+├── clipone.db       # SQLite (clipboard history)
+└── settings.json    # App settings
 ```
 
-### 6.2 データベーススキーマ (SQLite)
-
-#### クリップボード履歴テーブル
-
+### Database Schema
 ```sql
 CREATE TABLE clipboard_items (
     id TEXT PRIMARY KEY,
@@ -147,137 +40,44 @@ CREATE TABLE clipboard_items (
     content_type TEXT DEFAULT 'text/plain',
     timestamp INTEGER NOT NULL,
     is_favorite BOOLEAN DEFAULT FALSE,
-    source_app TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    source_app TEXT
 );
-
--- 全文検索用仮想テーブル
-CREATE VIRTUAL TABLE clipboard_search USING fts5(
-    content,
-    content='clipboard_items',
-    content_rowid='rowid'
-);
-
--- インデックス
-CREATE INDEX idx_timestamp ON clipboard_items(timestamp DESC);
-CREATE INDEX idx_favorite ON clipboard_items(is_favorite, timestamp DESC);
 ```
 
-#### 設定データ (settings.json)
+### Core Data Types
+```typescript
+interface ClipboardItem {
+  id: string;
+  content: string;
+  timestamp: number;
+  is_favorite: boolean;
+  source_app?: string;
+}
 
-```json
-{
-  "version": "1.0.0",
-  "max_history_items": 1000,
-  "auto_start": true,
-  "theme": "light",
-  "hotkeys": {
-    "toggle_window": "Ctrl+Shift+V",
-    "clear_history": "Ctrl+Shift+Delete"
-  },
-  "window": {
-    "width": 800,
-    "height": 600,
-    "x": 100,
-    "y": 100,
-    "remember_position": true
-  },
-  "database": {
-    "auto_cleanup": true,
-    "cleanup_days": 30
-  },
-  "notifications": {
-    "enabled": false,
-    "show_on_copy": false
-  }
+interface AppSettings {
+  max_history_items: number;
+  auto_start: boolean;
+  theme: 'light' | 'dark';
+  hotkeys: Record<string, string>;
 }
 ```
 
-### 6.3 データセキュリティとプライバシー
+## Development Phases
 
-- すべてのデータをローカルに保存（外部送信なし）
-- ユーザーによる完全なデータ制御
-- 履歴データの手動削除機能
-- 設定のリセット機能
+### Phase 1: Core Features
+- Basic UI implementation
+- Clipboard monitoring
+- History display
+- Basic settings
 
-## 7. システム統合
+### Phase 2: Enhanced Features  
+- Search functionality
+- Export/Import
+- Hotkey support
+- System tray integration
 
-### 7.1 クリップボード統合
-
-- **監視機能**: バックグラウンドでのクリップボード変更監視
-- **読み取り**: 現在のクリップボード内容の取得
-- **書き込み**: 選択したテキストをクリップボードに設定
-
-### 7.2 ファイルシステム統合
-
-- **データ永続化**: 履歴と設定の自動保存
-- **エクスポート**:
-  ファイルダイアログでユーザーが指定した場所にJSON/CSV形式で保存
-
-### 7.3 システム統合
-
-- **自動起動**: OS起動時の自動実行
-- **ホットキー**: グローバルショートカット対応
-- **システムトレイ**: 最小化時のトレイ常駐
-
-## 8. パフォーマンス要件
-
-### 8.1 スケーラビリティ
-
-- **履歴数**: 最大1,000,000件の履歴アイテム対応
-- **検索性能**: 大量データでも高速検索
-- **メモリ効率**: 必要に応じたデータの遅延読み込み
-
-## 9. ユーザビリティ要件
-
-### 9.1 使いやすさ
-
-- **直感的なUI**: 学習コストの最小化
-- **キーボード操作**: 主要機能のショートカット対応
-- **視覚的フィードバック**: 操作結果の明確な表示
-
-## 10. 将来の拡張機能
-
-### 10.1 計画中の機能
-
-- **クリップボード形式対応**: 画像、ファイルパスなどの対応
-- **同期機能**: 複数デバイス間での履歴同期
-- **プラグインシステム**: サードパーティ拡張機能
-- **クラウドバックアップ**: オプションでのクラウド保存
-
-### 10.2 潜在的な統合
-
-- **テキストエディタ**: VSCode、Sublime Text等との連携
-- **ブラウザ拡張**: ウェブページからの直接操作
-- **モバイルアプリ**: スマートフォンとの連携
-- **AI機能**: テキスト要約、翻訳機能
-
-## 11. 開発フェーズ
-
-### フェーズ1: 基本機能
-
-- 基本UI実装
-- クリップボード監視機能
-- 履歴表示機能
-- 基本的な設定管理
-
-### フェーズ2: 拡張機能
-
-- 検索機能
-- エクスポート/インポート機能
-- ホットキー対応
-- システムトレイ統合
-
-### フェーズ3: 高度な機能
-
-- お気に入り機能
-- テーマ対応
-- パフォーマンス最適化
-- セキュリティ強化
-
-### フェーズ4: 統合と拡張
-
-- 外部アプリケーション連携
-- プラグインシステム
-- クラウド同期機能
-- モバイル対応
+### Phase 3: Advanced Features
+- Favorites system
+- Theme support
+- Performance optimization
+- Security enhancements
