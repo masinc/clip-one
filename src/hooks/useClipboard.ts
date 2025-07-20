@@ -12,6 +12,7 @@ export interface ClipboardHook {
   stopMonitoring: () => Promise<void>;
   hasClipboardText: () => Promise<boolean>;
   clearClipboard: () => Promise<void>;
+  syncMonitoringStatus: () => Promise<void>;
   error: string | null;
 }
 
@@ -79,8 +80,23 @@ export function useClipboard(): ClipboardHook {
       try {
         clearError();
 
-        if (isMonitoring) {
-          console.log("クリップボード監視は既に開始されています");
+        // 監視状態を確認
+        const currentStatus = await invoke<boolean>("get_monitoring_status");
+
+        if (currentStatus) {
+          console.log("クリップボード監視は既に開始されています - 状態を同期");
+          setIsMonitoring(true);
+
+          // イベントリスナーが設定されていない場合は設定
+          if (!eventUnlisten) {
+            const unlisten = await listen<ClipboardItem>("clipboard-updated", (event) => {
+              console.log("📨 Rustからclipboard-updatedイベント受信:", event.payload);
+              const item = event.payload;
+              setCurrentText(item.content);
+              onUpdate?.(item.content);
+            });
+            setEventUnlisten(() => unlisten);
+          }
           return;
         }
 
@@ -111,7 +127,7 @@ export function useClipboard(): ClipboardHook {
         throw new Error(errorMsg);
       }
     },
-    [isMonitoring, clearError],
+    [eventUnlisten, clearError],
   );
 
   const stopMonitoring = useCallback(async (): Promise<void> => {
@@ -146,6 +162,21 @@ export function useClipboard(): ClipboardHook {
     }
   }, [isMonitoring, eventUnlisten, clearError]);
 
+  const syncMonitoringStatus = useCallback(async (): Promise<void> => {
+    try {
+      const status = await invoke<boolean>("get_monitoring_status");
+      setIsMonitoring(status);
+      console.log("🔄 監視状態同期:", status);
+    } catch (err) {
+      console.error("監視状態同期エラー:", err);
+    }
+  }, []);
+
+  // 初期化時に監視状態を確認
+  useEffect(() => {
+    syncMonitoringStatus();
+  }, [syncMonitoringStatus]);
+
   // コンポーネントアンマウント時の自動クリーンアップ
   useEffect(() => {
     return () => {
@@ -167,6 +198,7 @@ export function useClipboard(): ClipboardHook {
     stopMonitoring,
     hasClipboardText,
     clearClipboard,
+    syncMonitoringStatus,
     error,
   };
 }
