@@ -37,9 +37,11 @@ export default function Home() {
     originalY: 0,
     item: null,
   });
+  const [historySearchQuery, setHistorySearchQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedActionIndex, setSelectedActionIndex] = useState(-1);
   const [showAllActions, setShowAllActions] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   // 履歴データを取得（単純化）
   const loadClipboardHistory = useCallback(async () => {
@@ -60,6 +62,12 @@ export default function Home() {
       setLoading(false);
     }
   }, []);
+
+  // 履歴アイテムをフィルタリング
+  const filteredClipboardItems = clipboardItems.filter((item) => {
+    if (!historySearchQuery.trim()) return true;
+    return item.content.toLowerCase().includes(historySearchQuery.toLowerCase());
+  });
 
   // 初期化（一度だけ実行）
   useEffect(() => {
@@ -212,6 +220,19 @@ export default function Home() {
     }, 0);
   };
 
+  // アイテムの展開/縮小をトグル
+  const toggleItemExpansion = (itemId: string) => {
+    setExpandedItems((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
+
   // アクションを実行
   const executeAction = (action: ClipboardAction, item: DisplayClipboardItem) => {
     action.execute(item.content, navigate, item.id);
@@ -258,14 +279,20 @@ export default function Home() {
         }
       }}
     >
-      <HomeHeader onHistoryReload={loadClipboardHistory} />
+      <HomeHeader
+        searchQuery={historySearchQuery}
+        onSearchChange={setHistorySearchQuery}
+        onHistoryReload={loadClipboardHistory}
+      />
 
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <ClipboardItemList
-            clipboardItems={clipboardItems}
+            clipboardItems={filteredClipboardItems}
             loading={loading}
             error={error}
+            expandedItems={expandedItems}
+            onItemClick={toggleItemExpansion}
             onHistoryReload={loadClipboardHistory}
             onContextMenu={handleContextMenu}
           />
@@ -296,7 +323,7 @@ export default function Home() {
       )}
 
       <HomeFooter
-        clipboardItems={clipboardItems}
+        clipboardItems={filteredClipboardItems}
         loading={loading}
         clipboard={clipboard}
         onHistoryReload={loadClipboardHistory}

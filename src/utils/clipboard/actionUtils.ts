@@ -1,3 +1,4 @@
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { GlobalAction } from "@/contexts/ActionsContext";
 import type { ClipboardAction } from "@/types/clipboardActions";
 import { getIconComponent } from "@/utils/iconMapping";
@@ -20,14 +21,14 @@ export function convertToClipboardAction(action: GlobalAction): ClipboardAction 
         (action.allowedContentTypes.includes("url") && /^https?:\/\//.test(content))
       );
     },
-    execute: (content: string, _navigate?: (path: string) => void, _itemId?: string) => {
+    execute: async (content: string, _navigate?: (path: string) => void, _itemId?: string) => {
       if (!action.enabled) return;
 
       switch (action.type) {
         case "url":
           if (action.command) {
             const url = action.command.replace("CONTENT", encodeURIComponent(content));
-            window.open(url, "_blank");
+            await openUrl(url);
           }
           break;
         case "code":
@@ -49,7 +50,7 @@ export function convertToClipboardAction(action: GlobalAction): ClipboardAction 
               break;
             case "open-url":
               if (/^https?:\/\//.test(content)) {
-                window.open(content, "_blank");
+                await openUrl(content);
               }
               break;
             default:

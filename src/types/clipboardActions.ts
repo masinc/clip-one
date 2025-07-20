@@ -5,7 +5,7 @@ export interface ClipboardAction {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  execute: (content: string, navigate?: (path: string) => void, itemId?: string) => void;
+  execute: (content: string, navigate?: (path: string) => void, itemId?: string) => void | Promise<void>;
   condition?: (content: string, type: string) => boolean;
   priority?: number;
   keywords?: string[];
