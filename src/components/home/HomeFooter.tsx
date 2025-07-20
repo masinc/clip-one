@@ -1,17 +1,25 @@
 import { RefreshCw } from "lucide-react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useClipboard } from "@/hooks/useClipboard";
+import type { ClipboardHook } from "@/hooks/useClipboard";
 import type { DisplayClipboardItem } from "@/types/clipboardActions";
 
 interface HomeFooterProps {
   clipboardItems: DisplayClipboardItem[];
   loading: boolean;
+  clipboard: ClipboardHook;
   onHistoryReload: () => Promise<void>;
 }
 
-export function HomeFooter({ clipboardItems, loading, onHistoryReload }: HomeFooterProps) {
-  const clipboard = useClipboard();
+export function HomeFooter({ clipboardItems, loading, clipboard, onHistoryReload }: HomeFooterProps) {
+  // 定期的に監視状態を同期（3秒間隔）
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
+      clipboard.syncMonitoringStatus().catch(console.error);
+    }, 3000);
 
+    return () => clearInterval(syncInterval);
+  }, [clipboard.syncMonitoringStatus]);
   const handleStartMonitoring = () => {
     clipboard
       .startMonitoring((newText: string) => {

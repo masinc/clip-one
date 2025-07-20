@@ -12,6 +12,7 @@ export interface ClipboardHook {
   stopMonitoring: () => Promise<void>;
   hasClipboardText: () => Promise<boolean>;
   clearClipboard: () => Promise<void>;
+  syncMonitoringStatus: () => Promise<void>;
   error: string | null;
 }
 
@@ -161,20 +162,20 @@ export function useClipboard(): ClipboardHook {
     }
   }, [isMonitoring, eventUnlisten, clearError]);
 
+  const syncMonitoringStatus = useCallback(async (): Promise<void> => {
+    try {
+      const status = await invoke<boolean>("get_monitoring_status");
+      setIsMonitoring(status);
+      console.log("🔄 監視状態同期:", status);
+    } catch (err) {
+      console.error("監視状態同期エラー:", err);
+    }
+  }, []);
+
   // 初期化時に監視状態を確認
   useEffect(() => {
-    const checkInitialMonitoringStatus = async () => {
-      try {
-        const status = await invoke<boolean>("get_monitoring_status");
-        setIsMonitoring(status);
-        console.log("🔍 初期監視状態確認:", status);
-      } catch (err) {
-        console.error("監視状態確認エラー:", err);
-      }
-    };
-
-    checkInitialMonitoringStatus();
-  }, []);
+    syncMonitoringStatus();
+  }, [syncMonitoringStatus]);
 
   // コンポーネントアンマウント時の自動クリーンアップ
   useEffect(() => {
@@ -197,6 +198,7 @@ export function useClipboard(): ClipboardHook {
     stopMonitoring,
     hasClipboardText,
     clearClipboard,
+    syncMonitoringStatus,
     error,
   };
 }

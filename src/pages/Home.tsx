@@ -109,8 +109,10 @@ export default function Home() {
           console.log("🔄 onUpdateコールバック: クリップボード変更検出:", newText.substring(0, 50));
           // このコールバックはバックアップとして保持（直接イベントリスナーが機能しない場合用）
         })
-        .then(() => {
+        .then(async () => {
           console.log("✅ クリップボード監視が正常に開始されました");
+          // 状態を同期
+          await clipboard.syncMonitoringStatus();
           console.log("📊 監視状態:", clipboard.isMonitoring);
         })
         .catch((err) => {
@@ -293,7 +295,12 @@ export default function Home() {
         />
       )}
 
-      <HomeFooter clipboardItems={clipboardItems} loading={loading} onHistoryReload={loadClipboardHistory} />
+      <HomeFooter
+        clipboardItems={clipboardItems}
+        loading={loading}
+        clipboard={clipboard}
+        onHistoryReload={loadClipboardHistory}
+      />
     </div>
   );
 }
