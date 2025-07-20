@@ -102,7 +102,7 @@ export function ClipboardItemList({
 
               <button
                 type="button"
-                className="flex-1 min-w-0 cursor-pointer text-left bg-transparent border-none p-0"
+                className="flex-1 min-w-0 cursor-default text-left bg-transparent border-none p-0"
                 onClick={() => onItemClick(item.id)}
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -124,7 +124,7 @@ export function ClipboardItemList({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 hover:bg-accent"
+                  className="h-6 w-6 hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigator.clipboard.writeText(item.content);
