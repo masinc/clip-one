@@ -15,6 +15,10 @@ pub struct ClipboardItem {
     pub is_favorite: bool,
     pub source_app: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub available_formats: Option<String>,
+    pub primary_format: Option<String>,
+    pub data_size: Option<i64>,
+    pub format_contents: Option<String>,
 }
 
 /// データベース接続とマイグレーション管理
@@ -139,7 +143,81 @@ impl Database {
                 .await?;
         }
 
+        // バージョン3のマイグレーション（複数形式コンテンツ）
+        let migration_sql_v3 = include_str!("../../migrations/003_multiple_formats.sql");
+        
+        let version_3_exists: bool =
+            sqlx::query_scalar("SELECT 1 FROM schema_version WHERE version = 3")
+                .fetch_optional(&self.pool)
+                .await?
+                .unwrap_or(false);
+
+        if !version_3_exists {
+            // マイグレーションを実行
+            sqlx::query(migration_sql_v3).execute(&self.pool).await?;
+
+            // バージョンを記録
+            sqlx::query("INSERT INTO schema_version (version) VALUES (3)")
+                .execute(&self.pool)
+                .await?;
+        }
+
         Ok(())
+    }
+
+    /// クリップボードアイテムを保存（拡張版：複数形式コンテンツ対応）
+    pub async fn save_clipboard_item_with_all_formats(
+        &self,
+        content: &str,
+        content_type: &str,
+        source_app: Option<&str>,
+        available_formats: &[String],
+        primary_format: &str,
+        format_contents: &std::collections::HashMap<String, String>,
+    ) -> Result<ClipboardItem> {
+        let id = Uuid::new_v4().to_string();
+        let timestamp = Utc::now().timestamp_millis();
+        let created_at = Utc::now();
+        let data_size = content.len() as i64;
+        let formats_json = serde_json::to_string(available_formats).unwrap_or_else(|_| "[]".to_string());
+        let contents_json = serde_json::to_string(format_contents).unwrap_or_else(|_| "{}".to_string());
+
+        let item = ClipboardItem {
+            id: id.clone(),
+            content: content.to_string(),
+            content_type: content_type.to_string(),
+            timestamp,
+            is_favorite: false,
+            source_app: source_app.map(|s| s.to_string()),
+            created_at,
+            available_formats: Some(formats_json.clone()),
+            primary_format: Some(primary_format.to_string()),
+            data_size: Some(data_size),
+            format_contents: Some(contents_json.clone()),
+        };
+
+        sqlx::query(
+            r#"
+            INSERT INTO clipboard_items (
+                id, content, content_type, timestamp, is_favorite, source_app,
+                available_formats, primary_format, data_size, format_contents
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#
+        )
+        .bind(&id)
+        .bind(content)
+        .bind(content_type)
+        .bind(timestamp)
+        .bind(false)
+        .bind(source_app)
+        .bind(&formats_json)
+        .bind(primary_format)
+        .bind(data_size)
+        .bind(&contents_json)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(item)
     }
 
     /// クリップボードアイテムを保存（拡張版）
@@ -165,6 +243,10 @@ impl Database {
             is_favorite: false,
             source_app: source_app.map(String::from),
             created_at,
+            available_formats: Some(formats_json.clone()),
+            primary_format: Some(primary_format.to_string()),
+            data_size: Some(data_size),
+            format_contents: None, // この関数では format_contents は保存しない
         };
 
         sqlx::query(
@@ -206,6 +288,10 @@ impl Database {
             is_favorite: false,
             source_app: source_app.map(String::from),
             created_at,
+            available_formats: None,
+            primary_format: None,
+            data_size: None,
+            format_contents: None,
         };
 
         sqlx::query(
@@ -235,7 +321,8 @@ impl Database {
         let offset = offset.unwrap_or(0);
 
         let rows = sqlx::query(
-            "SELECT id, content, content_type, timestamp, is_favorite, source_app, created_at
+            "SELECT id, content, content_type, timestamp, is_favorite, source_app, created_at,
+                    available_formats, primary_format, data_size, format_contents
              FROM clipboard_items
              ORDER BY timestamp DESC
              LIMIT ? OFFSET ?",
@@ -255,6 +342,10 @@ impl Database {
                 is_favorite: row.get("is_favorite"),
                 source_app: row.get("source_app"),
                 created_at: row.get("created_at"),
+                available_formats: row.try_get("available_formats").ok(),
+                primary_format: row.try_get("primary_format").ok(),
+                data_size: row.try_get("data_size").ok(),
+                format_contents: row.try_get("format_contents").ok(),
             })
             .collect();
 
@@ -270,7 +361,8 @@ impl Database {
         let limit = limit.unwrap_or(50);
 
         let rows = sqlx::query(
-            "SELECT ci.id, ci.content, ci.content_type, ci.timestamp, ci.is_favorite, ci.source_app, ci.created_at
+            "SELECT ci.id, ci.content, ci.content_type, ci.timestamp, ci.is_favorite, ci.source_app, ci.created_at,
+                    ci.available_formats, ci.primary_format, ci.data_size, ci.format_contents
              FROM clipboard_items ci
              JOIN clipboard_search cs ON ci.rowid = cs.rowid
              WHERE clipboard_search MATCH ?
@@ -292,6 +384,10 @@ impl Database {
                 is_favorite: row.get("is_favorite"),
                 source_app: row.get("source_app"),
                 created_at: row.get("created_at"),
+                available_formats: row.try_get("available_formats").ok(),
+                primary_format: row.try_get("primary_format").ok(),
+                data_size: row.try_get("data_size").ok(),
+                format_contents: row.try_get("format_contents").ok(),
             })
             .collect();
 

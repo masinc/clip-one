@@ -20,6 +20,8 @@ export interface DisplayClipboardItem {
   type: string;
   timestamp: Date;
   app?: string;
+  availableFormats?: string[];
+  formatContents?: Record<string, string>;
 }
 
 /**

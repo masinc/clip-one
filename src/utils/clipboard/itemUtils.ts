@@ -29,11 +29,41 @@ export function convertClipboardItem(item: ClipboardItem): DisplayClipboardItem 
     }
   };
 
+  // 複数形式データを処理
+  let availableFormats: string[] = [];
+  let formatContents: Record<string, string> = {};
+
+  // available_formatsフィールドを解析
+  if (item.available_formats) {
+    try {
+      availableFormats = typeof item.available_formats === 'string' 
+        ? JSON.parse(item.available_formats) 
+        : item.available_formats;
+    } catch (e) {
+      console.warn('形式リスト解析エラー:', e);
+      availableFormats = [];
+    }
+  }
+
+  // format_contentsフィールドを解析
+  if (item.format_contents) {
+    try {
+      formatContents = typeof item.format_contents === 'string'
+        ? JSON.parse(item.format_contents)
+        : item.format_contents;
+    } catch (e) {
+      console.warn('形式コンテンツ解析エラー:', e);
+      formatContents = {};
+    }
+  }
+
   return {
     id: item.id,
     content: item.content,
     type: normalizeType(item.content_type || "text/plain"),
     timestamp: new Date(item.timestamp),
     app: item.source_app || "Unknown",
+    availableFormats: availableFormats.length > 0 ? availableFormats : undefined,
+    formatContents: Object.keys(formatContents).length > 0 ? formatContents : undefined,
   };
 }
