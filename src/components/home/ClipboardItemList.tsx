@@ -2,7 +2,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { Clock, Copy, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useClipboard } from "@/hooks/useClipboard";
 import type { DisplayClipboardItem } from "@/types/clipboardActions";
 import { formatRelativeTime } from "@/utils/dateUtils";
 import { getTypeIcon, truncateText } from "@/utils/textUtils";
@@ -22,8 +21,6 @@ export function ClipboardItemList({
   onHistoryReload,
   onContextMenu,
 }: ClipboardItemListProps) {
-  const clipboard = useClipboard();
-
   const handleAddTestData = async () => {
     try {
       const result = await invoke("add_test_data");
@@ -31,58 +28,6 @@ export function ClipboardItemList({
       await onHistoryReload();
     } catch (err) {
       console.error("テストデータ追加エラー:", err);
-    }
-  };
-
-  const handleManualImport = async () => {
-    try {
-      console.log("=== 手動取り込み開始 ===");
-      const currentText = await clipboard.readClipboard();
-      console.log("現在のクリップボード:", currentText);
-
-      const savedItem = await invoke("save_clipboard_item", {
-        content: currentText,
-        contentType: "text/plain",
-        sourceApp: "Manual Test",
-      });
-      console.log("保存結果:", savedItem);
-
-      await onHistoryReload();
-      console.log("=== 手動取り込み完了 ===");
-    } catch (err) {
-      console.error("手動取り込みエラー:", err);
-    }
-  };
-
-  const handleClipboardTest = async () => {
-    try {
-      console.log("=== clipboard-rs テスト ===");
-      const result = await invoke("test_clipboard_rs");
-      console.log("✅ clipboard-rs テスト結果:", result);
-
-      console.log("=== 監視状態確認 ===");
-      const monitoringStatus = await invoke("get_monitoring_status");
-      console.log("監視状態:", monitoringStatus);
-
-      console.log("=== フロントエンド状態確認 ===");
-      console.log("フロントエンド監視状態:", clipboard.isMonitoring);
-      console.log("エラー:", clipboard.error);
-      console.log("現在のテキスト:", clipboard.currentText);
-    } catch (err) {
-      console.error("❌ clipboard-rsテストエラー:", err);
-    }
-  };
-
-  const handleClearHistory = async () => {
-    if (confirm("すべての履歴を削除しますか？この操作は取り消せません。")) {
-      console.log("履歴クリア開始...");
-      try {
-        await invoke("clear_clipboard_history");
-        console.log("履歴クリア完了");
-        await onHistoryReload();
-      } catch (err) {
-        console.error("履歴クリアエラー:", err);
-      }
     }
   };
 
@@ -95,9 +40,11 @@ export function ClipboardItemList({
             <Button variant="outline" size="sm" onClick={onHistoryReload}>
               再試行
             </Button>
-            <Button variant="outline" size="sm" onClick={handleAddTestData}>
-              テストデータ追加
-            </Button>
+            {process.env.NODE_ENV === "development" && (
+              <Button variant="outline" size="sm" onClick={handleAddTestData}>
+                テストデータ追加
+              </Button>
+            )}
           </div>
         </Card>
       </div>
@@ -119,23 +66,13 @@ export function ClipboardItemList({
       <div className="p-2">
         <Card className="mb-2 p-3">
           <p className="text-sm text-muted-foreground mb-2">まだクリップボード履歴がありません。</p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleAddTestData}>
-              テストデータ追加
-            </Button>
-            <Button variant="outline" size="sm" onClick={onHistoryReload}>
-              更新
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleManualImport}>
-              手動取り込み
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleClipboardTest}>
-              clipboard-rsテスト
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleClearHistory}>
-              履歴クリア
-            </Button>
-          </div>
+          {process.env.NODE_ENV === "development" && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleAddTestData}>
+                テストデータ追加
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
     );
