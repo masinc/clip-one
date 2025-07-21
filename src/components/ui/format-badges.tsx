@@ -11,6 +11,7 @@ interface FormatBadgeProps {
 function FormatBadge({ format, isActive, onClick, isMain = false }: FormatBadgeProps) {
   return (
     <button
+      type="button"
       className={`
         inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md transition-colors
         ${
