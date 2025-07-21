@@ -46,9 +46,9 @@ export function ClipboardItemList({
     return { format: selectedFormat, content };
   };
 
-  // 画像を別ウィンドウで表示
-  const handleImageWindow = (imageData: string) => {
-    console.log("🖼️ 画像別ウィンドウ表示:", `${imageData.substring(0, 50)}...`);
+  // 画像をクリック位置に表示
+  const handleImageWindow = (imageData: string, clickEvent: React.MouseEvent) => {
+    console.log("🖼️ 画像表示:", `${imageData.substring(0, 50)}...`);
 
     // 画像サイズを取得するための一時的なImage要素を作成
     const tempImg = new Image();
@@ -78,10 +78,34 @@ export function ClipboardItemList({
         windowHeight = windowHeight * scale;
       }
 
+      // クリック位置を基準とした表示位置を計算
+      const clickX = clickEvent.screenX;
+      const clickY = clickEvent.screenY;
+      
+      // ウィンドウがデスクトップ範囲外に出ないよう調整
+      let windowX = clickX - windowWidth / 2; // クリック位置を中央とする
+      let windowY = clickY - windowHeight / 2;
+      
+      // 画面境界チェック
+      if (windowX < 0) windowX = 0;
+      if (windowY < 0) windowY = 0;
+      if (windowX + windowWidth > screenWidth) {
+        windowX = screenWidth - windowWidth;
+      }
+      if (windowY + windowHeight > screenHeight) {
+        windowY = screenHeight - windowHeight;
+      }
+      
+      // 調整後もデスクトップ範囲外になる場合は中央表示にフォールバック
+      if (windowX < 0 || windowY < 0) {
+        windowX = (screenWidth - windowWidth) / 2;
+        windowY = (screenHeight - windowHeight) / 2;
+      }
+
       const newWindow = window.open(
         "",
         "_blank",
-        `width=${Math.round(windowWidth)},height=${Math.round(windowHeight)},scrollbars=no,resizable=yes`,
+        `width=${Math.round(windowWidth)},height=${Math.round(windowHeight)},left=${Math.round(windowX)},top=${Math.round(windowY)},scrollbars=no,resizable=yes`,
       );
       if (newWindow) {
         newWindow.document.write(`
@@ -284,18 +308,26 @@ export function ClipboardItemList({
                           onClick={(e) => {
                             e.stopPropagation();
                             console.log(
-                              "🖼️ 画像クリック - 別ウィンドウ表示:",
+                              "🖼️ 画像クリック - クリック位置表示:",
                               currentFormat,
                               "データ長:",
                               currentContent.length,
+                              "位置:",
+                              e.screenX,
+                              e.screenY
                             );
-                            handleImageWindow(currentContent);
+                            handleImageWindow(currentContent, e);
                           }}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
                               e.stopPropagation();
-                              handleImageWindow(currentContent);
+                              // キーボード操作の場合は画面中央に表示
+                              const centerEvent = {
+                                screenX: window.screen.availWidth / 2,
+                                screenY: window.screen.availHeight / 2,
+                              } as React.MouseEvent;
+                              handleImageWindow(currentContent, centerEvent);
                             }
                           }}
                           onError={(e) => {
