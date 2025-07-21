@@ -12,12 +12,14 @@ use database::Database;
 /// システムトレイの設定
 fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // トレイメニューを作成
-    let show_hide = MenuItem::with_id(app, "toggle_window", "表示/非表示", true, None::<&str>)?;
-    let clear_history = MenuItem::with_id(app, "clear_history", "履歴をクリア", true, None::<&str>)?;
-    let separator = PredefinedMenuItem::separator(app)?;
+    let show_hide = MenuItem::with_id(app, "toggle_window", "履歴を表示", true, None::<&str>)?;
+    let separator1 = PredefinedMenuItem::separator(app)?;
+    let settings = MenuItem::with_id(app, "settings", "設定", true, None::<&str>)?;
+    let about = MenuItem::with_id(app, "about", "ClipOne について", true, None::<&str>)?;
+    let separator2 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItem::with_id(app, "quit", "終了", true, None::<&str>)?;
     
-    let menu = Menu::with_items(app, &[&show_hide, &clear_history, &separator, &quit])?;
+    let menu = Menu::with_items(app, &[&show_hide, &separator1, &settings, &about, &separator2, &quit])?;
     
     // トレイアイコンを作成（既存の32x32アイコンを使用）
     let icon_bytes = include_bytes!("../icons/32x32.png");
@@ -29,7 +31,7 @@ fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
     let _tray = TrayIconBuilder::with_id("main-tray")
         .menu(&menu)
         .icon(icon)
-        .tooltip("ClipOne - クリップボード履歴管理")
+        .tooltip("ClipOne - クリップボード履歴管理\n左クリック: 表示切り替え\n右クリック: メニュー")
         .on_tray_icon_event(|tray, event| {
             match event {
                 TrayIconEvent::Click { button: MouseButton::Left, .. } => {
@@ -58,10 +60,26 @@ fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
                         }
                     }
                 }
-                "clear_history" => {
-                    // 履歴クリア - 既存のコマンドを呼び出し
+                "settings" => {
+                    // 設定画面を表示
                     if let Some(window) = app.get_webview_window("main") {
-                        let _ = window.emit("tray-clear-history", ());
+                        // まずウィンドウを表示
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                        // 設定ページに遷移するイベントを送信
+                        let _ = window.emit("tray-navigate-settings", ());
+                    }
+                }
+                "about" => {
+                    // アバウト情報を表示
+                    let version = env!("CARGO_PKG_VERSION");
+                    let app_name = env!("CARGO_PKG_NAME");
+                    let description = env!("CARGO_PKG_DESCRIPTION");
+                    
+                    let about_info = format!("{} v{}\n{}\n\nBuilt with Tauri + React + Rust", app_name, version, description);
+                    
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.emit("tray-show-about", about_info);
                     }
                 }
                 "quit" => {

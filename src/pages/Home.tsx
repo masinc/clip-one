@@ -79,6 +79,7 @@ export default function Home() {
     // 直接clipboard-updatedイベントをリッスンして履歴リストを即座に更新
     let unlistenClipboardUpdated: (() => void) | null = null;
     let unlistenTrayEvents: (() => void) | null = null;
+    let unlistenNavigationEvents: (() => void) | null = null;
 
     const setupDirectEventListener = async () => {
       try {
@@ -108,27 +109,35 @@ export default function Home() {
 
     setupDirectEventListener();
 
-    // トレイイベントリスナーを設定
+    // トレイイベントリスナーを設定（現在は使用していない）
     const setupTrayEventListener = async () => {
-      try {
-        unlistenTrayEvents = await listen("tray-clear-history", async () => {
-          console.log("🗑️ トレイから履歴クリア要求を受信");
-          try {
-            await historyApi.clearClipboardHistory();
-            setClipboardItems([]);
-            console.log("✅ トレイから履歴をクリアしました");
-          } catch (error) {
-            console.error("❌ トレイからの履歴クリアエラー:", error);
-            setError("履歴のクリアに失敗しました");
-          }
-        });
-        console.log("✅ トレイイベントリスナー設定完了");
-      } catch (err) {
-        console.error("❌ トレイイベントリスナー設定エラー:", err);
-      }
+      // 将来の拡張用に保持
+      console.log("✅ トレイイベントリスナー準備完了");
     };
 
     setupTrayEventListener();
+
+    // トレイナビゲーションイベントリスナーを設定
+    const setupNavigationEventListener = async () => {
+      try {
+        unlistenNavigationEvents = await listen("tray-navigate-settings", () => {
+          console.log("⚙️ トレイから設定画面遷移要求を受信");
+          navigate("/settings");
+        });
+        
+        // アバウト情報表示イベント
+        const unlistenAbout = await listen<string>("tray-show-about", (event) => {
+          console.log("ℹ️ トレイからアバウト情報表示要求を受信");
+          alert(event.payload);
+        });
+        
+        console.log("✅ ナビゲーションイベントリスナー設定完了");
+      } catch (err) {
+        console.error("❌ ナビゲーションイベントリスナー設定エラー:", err);
+      }
+    };
+
+    setupNavigationEventListener();
 
     // クリップボード監視開始（遅延）
     const timer = setTimeout(() => {
@@ -160,6 +169,9 @@ export default function Home() {
       }
       if (unlistenTrayEvents) {
         unlistenTrayEvents();
+      }
+      if (unlistenNavigationEvents) {
+        unlistenNavigationEvents();
       }
       console.log("Home コンポーネントクリーンアップ");
       clipboard.stopMonitoring().catch(console.error);
