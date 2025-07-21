@@ -304,12 +304,9 @@ export function ClipboardItemList({
                           }}
                           title="クリックで別ウィンドウ表示"
                         />
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            画像データ ({Math.round(currentContent.length / 1024)}KB)
-                          </p>
-                          <p className="text-xs text-muted-foreground">クリックで別ウィンドウ表示</p>
-                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          画像データ ({Math.round(currentContent.length / 1024)}KB)
+                        </p>
                       </div>
                     ) : (
                       <p className="text-muted-foreground">{displayContent}</p>
