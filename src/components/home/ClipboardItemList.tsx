@@ -182,6 +182,28 @@ export function ClipboardItemList({
                       </div>
                     )}
                   </div>
+                ) : currentFormat === "image/png" ? (
+                  // 画像表示
+                  <div className="text-sm">
+                    {currentContent.startsWith("data:image/") ? (
+                      <div className="space-y-2">
+                        <img 
+                          src={currentContent} 
+                          alt="クリップボード画像"
+                          className="max-w-full max-h-48 rounded border object-contain bg-muted"
+                          onError={(e) => {
+                            console.error("画像表示エラー:", e);
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          画像データ ({Math.round(currentContent.length / 1024)}KB)
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">{displayContent}</p>
+                    )}
+                  </div>
                 ) : (
                   // 通常のテキスト表示
                   <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{displayContent}</p>

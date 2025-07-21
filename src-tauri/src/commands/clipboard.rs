@@ -1,7 +1,8 @@
 use crate::database::{Database, DisplayClipboardItem};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use clipboard_rs::{
     Clipboard, ClipboardContext, ClipboardHandler, ClipboardWatcher, ClipboardWatcherContext,
-    ContentFormat,
+    ContentFormat, common::RustImage,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -434,9 +435,53 @@ fn collect_all_format_contents(ctx: &ClipboardContext) -> std::collections::Hash
     
     // 画像形式
     if ctx.has(ContentFormat::Image) {
-        if let Ok(_image_data) = ctx.get_image() {
-            let image_info = "[画像データ]".to_string();
-            contents.insert("image/png".to_string(), image_info);
+        if let Ok(image_data) = ctx.get_image() {
+            // RustImageDataの利用可能なメソッドを試してみる
+            println!("📸 画像データ取得成功");
+            
+            // 画像をファイルに一時保存して読み込む方法を試す
+            let temp_path = std::env::temp_dir().join("clipboard_debug.png");
+            match image_data.save_to_path(&temp_path.to_string_lossy()) {
+                Ok(_) => {
+                    // ファイルからBase64を作成
+                    match std::fs::read(&temp_path) {
+                        Ok(bytes) => {
+                            // 画像サイズ制限（5MB）
+                            const MAX_IMAGE_SIZE: usize = 5 * 1024 * 1024;
+                            if bytes.len() > MAX_IMAGE_SIZE {
+                                println!("📸 画像サイズが大きすぎます: {}バイト (上限: {}MB)", bytes.len(), MAX_IMAGE_SIZE / 1024 / 1024);
+                                let size_info = format!("[画像データ: {}KB - サイズ制限により表示不可]", bytes.len() / 1024);
+                                contents.insert("image/png".to_string(), size_info);
+                            } else {
+                                let base64_data = BASE64.encode(&bytes);
+                                let data_url = format!("data:image/png;base64,{}", base64_data);
+                                contents.insert("image/png".to_string(), data_url);
+                                println!("📸 画像データ保存成功: {}KB", bytes.len() / 1024);
+                            }
+                            
+                            // 一時ファイル削除
+                            let _ = std::fs::remove_file(&temp_path);
+                        },
+                        Err(e) => {
+                            println!("ファイル読み込みエラー: {}", e);
+                            // Windows特有のエラーでもプレースホルダー保存
+                            let error_info = format!("[画像データ: 読み込みエラー - {}]", e);
+                            contents.insert("image/png".to_string(), error_info);
+                        }
+                    }
+                },
+                Err(e) => {
+                    println!("画像保存エラー: {} (Windows OSError(0)は正常終了の場合があります)", e);
+                    // Windows特有のOSError(0)の場合でもプレースホルダー保存
+                    if e.to_string().contains("OSError(0)") {
+                        let placeholder = "[画像データ: Windows取得エラー]".to_string();
+                        contents.insert("image/png".to_string(), placeholder);
+                    } else {
+                        let error_info = format!("[画像データ: 保存エラー - {}]", e);
+                        contents.insert("image/png".to_string(), error_info);
+                    }
+                },
+            }
         }
     }
     
@@ -482,13 +527,60 @@ fn get_clipboard_content_by_priority(ctx: &ClipboardContext) -> Result<(String, 
     
     if ctx.has(ContentFormat::Image) {
         match ctx.get_image() {
-            Ok(_image_data) => {
-                // 画像データが検出されたことを示す
-                let image_info = "[画像データ]".to_string();
-                println!("📸 画像検出成功");
-                return Ok((image_info, "image/png".to_string()));
+            Ok(image_data) => {
+                // RustImageDataの利用可能なメソッドを試してみる
+                println!("📸 画像データ取得成功");
+                
+                // 画像をファイルに一時保存して読み込む方法を試す
+                let temp_path = std::env::temp_dir().join("clipboard_priority_debug.png");
+                match image_data.save_to_path(&temp_path.to_string_lossy()) {
+                    Ok(_) => {
+                        // ファイルからBase64を作成
+                        match std::fs::read(&temp_path) {
+                            Ok(bytes) => {
+                                // 画像サイズ制限（5MB）
+                                const MAX_IMAGE_SIZE: usize = 5 * 1024 * 1024;
+                                if bytes.len() > MAX_IMAGE_SIZE {
+                                    println!("📸 画像サイズが大きすぎます: {}バイト (上限: {}MB)", bytes.len(), MAX_IMAGE_SIZE / 1024 / 1024);
+                                    let size_info = format!("[画像データ: {}KB - サイズ制限により表示不可]", bytes.len() / 1024);
+                                    
+                                    // 一時ファイル削除
+                                    let _ = std::fs::remove_file(&temp_path);
+                                    
+                                    return Ok((size_info, "image/png".to_string()));
+                                } else {
+                                    let base64_data = BASE64.encode(&bytes);
+                                    let data_url = format!("data:image/png;base64,{}", base64_data);
+                                    println!("📸 画像データ変換成功: {}KB", bytes.len() / 1024);
+                                    
+                                    // 一時ファイル削除
+                                    let _ = std::fs::remove_file(&temp_path);
+                                    
+                                    return Ok((data_url, "image/png".to_string()));
+                                }
+                            },
+                            Err(e) => {
+                                println!("ファイル読み込みエラー: {}", e);
+                                return Ok(("[画像データ: 読み込みエラー]".to_string(), "image/png".to_string()));
+                            },
+                        }
+                    },
+                    Err(e) => {
+                        println!("画像保存エラー: {}", e);
+                        return Ok(("[画像データ: 保存エラー]".to_string(), "image/png".to_string()));
+                    },
+                }
             },
-            Err(e) => println!("画像取得エラー: {}", e),
+            Err(e) => {
+                println!("画像取得エラー: {} (Windows OSError(0)は正常終了の場合があります)", e);
+                // Windows特有のOSError(0)の場合、画像が実際に存在する可能性があるため
+                // プレースホルダーとして画像形式で保存
+                if e.to_string().contains("OSError(0)") {
+                    println!("📸 Windows OSError(0) - 画像データは存在する可能性があります");
+                    println!("💡 clipboard-rsの制限: 将来的にarboardライブラリへの移行を検討");
+                    return Ok(("[画像データ: Windows取得エラー - arboard移行検討中]".to_string(), "image/png".to_string()));
+                }
+            },
         }
     }
     
