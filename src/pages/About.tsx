@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { ArrowLeft, Code, FileText, Github, Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -186,7 +187,7 @@ const About = () => {
           <CardHeader>
             <CardTitle>関連リンク</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent>
             {appInfo?.repository && (
               <Button
                 variant="outline"
@@ -194,7 +195,7 @@ const About = () => {
                 onClick={async () => {
                   if (appInfo?.repository) {
                     try {
-                      await invoke("plugin:opener|open", { url: appInfo.repository });
+                      await openUrl(appInfo.repository);
                     } catch (error) {
                       console.error("リポジトリを開けませんでした:", error);
                     }
@@ -203,22 +204,6 @@ const About = () => {
               >
                 <Github className="h-4 w-4 mr-2" />
                 GitHub リポジトリ
-              </Button>
-            )}
-
-            {appInfo?.license && (
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => {
-                  // TODO: ライセンス詳細ダイアログを表示
-                  alert(
-                    `ライセンス: ${appInfo.license}\n\n詳細なライセンス情報については、GitHubリポジトリをご確認ください。`,
-                  );
-                }}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                ライセンス情報
               </Button>
             )}
           </CardContent>
