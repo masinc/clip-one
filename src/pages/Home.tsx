@@ -125,7 +125,7 @@ export default function Home() {
         });
 
         // アバウトページナビゲーションイベント
-        const _unlistenAbout = await listen("tray-navigate-about", () => {
+        await listen("tray-navigate-about", () => {
           console.log("ℹ️ トレイからアバウト画面遷移要求を受信");
           navigate("/about");
         });
