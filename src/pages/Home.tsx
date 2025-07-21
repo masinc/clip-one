@@ -125,12 +125,6 @@ export default function Home() {
           navigate("/settings");
         });
         
-        // アバウト情報表示イベント
-        const unlistenAbout = await listen<string>("tray-show-about", (event) => {
-          console.log("ℹ️ トレイからアバウト情報表示要求を受信");
-          alert(event.payload);
-        });
-        
         console.log("✅ ナビゲーションイベントリスナー設定完了");
       } catch (err) {
         console.error("❌ ナビゲーションイベントリスナー設定エラー:", err);
