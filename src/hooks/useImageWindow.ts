@@ -38,11 +38,11 @@ export function useImageWindow() {
       // クリック位置を基準とした表示位置を計算
       const clickX = clickEvent.screenX;
       const clickY = clickEvent.screenY;
-      
+
       // ウィンドウがデスクトップ範囲外に出ないよう調整
       let windowX = clickX - windowWidth / 2; // クリック位置を中央とする
       let windowY = clickY - windowHeight / 2;
-      
+
       // 画面境界チェック
       if (windowX < 0) windowX = 0;
       if (windowY < 0) windowY = 0;
@@ -52,7 +52,7 @@ export function useImageWindow() {
       if (windowY + windowHeight > screenHeight) {
         windowY = screenHeight - windowHeight;
       }
-      
+
       // 調整後もデスクトップ範囲外になる場合は中央表示にフォールバック
       if (windowX < 0 || windowY < 0) {
         windowX = (screenWidth - windowWidth) / 2;

@@ -2,11 +2,11 @@ import { Clock, Copy, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FormatBadges } from "@/components/ui/format-badges";
+import { useImageCopy } from "@/hooks/useImageCopy";
+import { useTextCopy } from "@/hooks/useTextCopy";
 import type { DisplayClipboardItem } from "@/types/clipboardActions";
 import { formatRelativeTime } from "@/utils/dateUtils";
 import { getTypeIcon, getTypeName } from "@/utils/textUtils";
-import { useImageCopy } from "@/hooks/useImageCopy";
-import { useTextCopy } from "@/hooks/useTextCopy";
 import { ClipboardContentRenderer } from "./ClipboardContentRenderer";
 
 interface ClipboardItemProps {
@@ -71,11 +71,7 @@ export function ClipboardItem({
           )}
 
           {/* コンテンツ表示 - 形式別の特殊表示 */}
-          <ClipboardContentRenderer
-            format={currentFormat}
-            content={currentContent}
-            isExpanded={isExpanded}
-          />
+          <ClipboardContentRenderer format={currentFormat} content={currentContent} isExpanded={isExpanded} />
         </button>
 
         <div className="ml-2">
@@ -85,7 +81,7 @@ export function ClipboardItem({
             className="h-6 w-6 hover:bg-accent transition-opacity cursor-pointer"
             onClick={async (e) => {
               e.stopPropagation();
-              
+
               // 画像データの場合は画像としてコピー、それ以外はテキストとしてコピー
               if (currentFormat === "image/png" && currentContent.startsWith("data:image/")) {
                 await copyImageToClipboard(currentContent);

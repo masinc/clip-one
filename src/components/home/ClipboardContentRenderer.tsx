@@ -1,7 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { parseFileList, truncateText } from "@/utils/textUtils";
-import { useImageWindow } from "@/hooks/useImageWindow";
 import { useClipboardControl } from "@/hooks/useClipboardControl";
+import { useImageWindow } from "@/hooks/useImageWindow";
+import { parseFileList, truncateText } from "@/utils/textUtils";
 
 interface ClipboardContentRendererProps {
   format: string;
@@ -9,14 +9,10 @@ interface ClipboardContentRendererProps {
   isExpanded: boolean;
 }
 
-export function ClipboardContentRenderer({
-  format,
-  content,
-  isExpanded,
-}: ClipboardContentRendererProps) {
+export function ClipboardContentRenderer({ format, content, isExpanded }: ClipboardContentRendererProps) {
   const { showImageWindow } = useImageWindow();
   const { notifyStartCopy } = useClipboardControl();
-  
+
   const shouldTruncate = content.length > 100;
   const displayContent = isExpanded || !shouldTruncate ? content : truncateText(content);
 
@@ -49,7 +45,7 @@ export function ClipboardContentRenderer({
   if (format === "application/x-file-list") {
     const fileList = parseFileList(content);
     const displayFiles = isExpanded ? fileList : fileList.slice(0, 3);
-    
+
     return (
       <div className="text-sm space-y-1">
         {displayFiles.map((file, i) => (
@@ -59,9 +55,7 @@ export function ClipboardContentRenderer({
           </div>
         ))}
         {!isExpanded && fileList.length > 3 && (
-          <div className="text-xs text-muted-foreground">
-            +{fileList.length - 3}個のファイル...
-          </div>
+          <div className="text-xs text-muted-foreground">+{fileList.length - 3}個のファイル...</div>
         )}
       </div>
     );
@@ -86,7 +80,7 @@ export function ClipboardContentRenderer({
                   content.length,
                   "位置:",
                   e.screenX,
-                  e.screenY
+                  e.screenY,
                 );
                 showImageWindow(content, e);
               }}
@@ -108,9 +102,7 @@ export function ClipboardContentRenderer({
               }}
               title="クリックで別ウィンドウ表示"
             />
-            <p className="text-xs text-muted-foreground">
-              画像データ ({Math.round(content.length / 1024)}KB)
-            </p>
+            <p className="text-xs text-muted-foreground">画像データ ({Math.round(content.length / 1024)}KB)</p>
           </div>
         ) : (
           <p className="text-muted-foreground">{displayContent}</p>
@@ -120,9 +112,5 @@ export function ClipboardContentRenderer({
   }
 
   // 通常のテキスト表示
-  return (
-    <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
-      {displayContent}
-    </p>
-  );
+  return <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{displayContent}</p>;
 }

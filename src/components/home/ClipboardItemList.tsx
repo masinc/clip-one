@@ -1,7 +1,7 @@
-import type { DisplayClipboardItem } from "@/types/clipboardActions";
 import { useClipboardFormats } from "@/hooks/useClipboardFormats";
+import type { DisplayClipboardItem } from "@/types/clipboardActions";
 import { ClipboardItem } from "./ClipboardItem";
-import { ErrorView, LoadingView, EmptyView } from "./ClipboardStateViews";
+import { EmptyView, ErrorView, LoadingView } from "./ClipboardStateViews";
 
 interface ClipboardItemListProps {
   clipboardItems: DisplayClipboardItem[];
@@ -23,7 +23,6 @@ export function ClipboardItemList({
   onContextMenu,
 }: ClipboardItemListProps) {
   const { handleFormatChange, getCurrentFormatAndContent } = useClipboardFormats();
-
 
   if (error) {
     return <ErrorView error={error} onHistoryReload={onHistoryReload} />;

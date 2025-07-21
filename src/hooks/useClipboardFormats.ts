@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { DisplayClipboardItem } from "@/types/clipboardActions";
 
 /**
@@ -17,11 +17,14 @@ export function useClipboardFormats() {
   }, []);
 
   // アイテムの現在の形式とコンテンツを取得
-  const getCurrentFormatAndContent = useCallback((item: DisplayClipboardItem) => {
-    const selectedFormat = selectedFormats[item.id] || item.content_type;
-    const content = item.format_contents?.[selectedFormat] || item.content;
-    return { format: selectedFormat, content };
-  }, [selectedFormats]);
+  const getCurrentFormatAndContent = useCallback(
+    (item: DisplayClipboardItem) => {
+      const selectedFormat = selectedFormats[item.id] || item.content_type;
+      const content = item.format_contents?.[selectedFormat] || item.content;
+      return { format: selectedFormat, content };
+    },
+    [selectedFormats],
+  );
 
   return {
     selectedFormats,

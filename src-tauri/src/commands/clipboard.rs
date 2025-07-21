@@ -12,7 +12,6 @@ use tokio::sync::Mutex;
 // グローバルな監視状態
 static MONITORING: AtomicBool = AtomicBool::new(false);
 
-
 // shutdown_channelをグローバルで保持
 use clipboard_rs::WatcherShutdown;
 use std::sync::Mutex as StdMutex;
@@ -41,7 +40,6 @@ impl ClipboardManager {
 impl ClipboardHandler for ClipboardManager {
     fn on_clipboard_change(&mut self) {
         println!("🎉 clipboard-rs: クリップボード変更検出!");
-
 
         // 新しい内容を取得 - ClipboardHandlerでは毎回新しいcontextを作る必要がある
         let ctx = match ClipboardContext::new() {
@@ -127,21 +125,30 @@ impl ClipboardHandler for ClipboardManager {
                 // 直近5件の中に同一内容があるかチェック（コピーボタン対策）
                 let is_duplicate = recent_items.iter().any(|item| {
                     // プライマリコンテンツと同じかチェック
-                    if let Some(primary_content) = item.contents.iter()
-                        .find(|c| c.format == item.primary_format) {
+                    if let Some(primary_content) = item
+                        .contents
+                        .iter()
+                        .find(|c| c.format == item.primary_format)
+                    {
                         primary_content.content == content_clone
                     } else {
                         // プライマリが見つからない場合は任意のコンテンツと比較
-                        item.contents.iter().any(|content| content.content == content_clone)
+                        item.contents
+                            .iter()
+                            .any(|content| content.content == content_clone)
                     }
                 });
 
                 // さらに、直前のアイテムと完全に同一の場合は確実にスキップ
                 if let Some(latest_item) = recent_items.first() {
-                    if let Some(latest_content) = latest_item.contents.iter()
-                        .find(|c| c.format == latest_item.primary_format) {
-                        if latest_content.content == content_clone && 
-                           latest_item.primary_format == format_clone {
+                    if let Some(latest_content) = latest_item
+                        .contents
+                        .iter()
+                        .find(|c| c.format == latest_item.primary_format)
+                    {
+                        if latest_content.content == content_clone
+                            && latest_item.primary_format == format_clone
+                        {
                             // UTF-8文字境界を考慮した安全なスライス
                             let preview = if content_clone.len() <= 50 {
                                 content_clone.as_str()
@@ -153,12 +160,14 @@ impl ClipboardHandler for ClipboardManager {
                                 }
                                 &content_clone[..boundary]
                             };
-                            println!("🔄 直前と同一の内容・フォーマットのため重複スキップ: {}", preview);
+                            println!(
+                                "🔄 直前と同一の内容・フォーマットのため重複スキップ: {}",
+                                preview
+                            );
                             return;
                         }
                     }
                 }
-
 
                 if !is_duplicate {
                     match db
@@ -282,7 +291,7 @@ pub async fn start_clipboard_monitoring(
                     &text[..boundary]
                 };
                 println!("📋 現在のクリップボード内容: {}", preview);
-            },
+            }
             Err(e) => println!("❌ クリップボード読み取りテストエラー: {}", e),
         },
         Err(e) => {

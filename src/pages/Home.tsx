@@ -138,7 +138,8 @@ export default function Home() {
       console.log("Home コンポーネントクリーンアップ");
       clipboard.stopMonitoring().catch(console.error);
     };
-  }, []); // 初期化時のみ実行
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 初期化時のみ実行（意図的に空の依存配列を使用）
 
   // コンテキストからアクションを取得して変換する関数
   const getClipboardActions = () => {
