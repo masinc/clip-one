@@ -192,7 +192,7 @@ export function ClipboardItemList({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  className="h-6 w-6 hover:bg-accent transition-opacity cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigator.clipboard.writeText(currentContent);
