@@ -1,16 +1,4 @@
-import {
-  ArrowLeft,
-  Database,
-  Download,
-  Eye,
-  FileText,
-  Monitor,
-  Moon,
-  RotateCcw,
-  Sun,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { ArrowLeft, Database, Download, Eye, Monitor, Moon, RotateCcw, Sun, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -204,28 +192,6 @@ const Settings = () => {
                 設定をリセット
               </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* アプリ情報 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>アプリ情報</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">バージョン</span>
-              <span>1.0.0</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">ビルド</span>
-              <span>2024.12.21</span>
-            </div>
-            <Separator className="my-3" />
-            <Button variant="outline" className="w-full justify-start">
-              <FileText className="h-4 w-4 mr-2" />
-              ライセンス情報
-            </Button>
           </CardContent>
         </Card>
       </div>

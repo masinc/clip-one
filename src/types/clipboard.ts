@@ -36,9 +36,20 @@ export interface ExportData {
   items: ClipboardItem[];
 }
 
-// アプリケーション設定の型定義
+// アプリケーション情報の型定義
+export interface AppInfo {
+  name: string; // アプリ名
+  version: string; // バージョン（Cargo.tomlから）
+  description: string; // アプリ説明
+  author: string; // 作者
+  license?: string; // ライセンス
+  repository?: string; // リポジトリURL
+  homepage?: string; // ホームページ
+  build_date: string; // ビルド日時
+}
+
+// アプリケーション設定の型定義（versionフィールドを削除）
 export interface AppSettings {
-  version: string;
   auto_start: boolean;
   max_history_items: number;
   hotkeys: Record<string, string>;

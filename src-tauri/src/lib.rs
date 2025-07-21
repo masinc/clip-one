@@ -18,10 +18,11 @@ fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
     let show_hide = MenuItem::with_id(app, "toggle_window", "履歴の表示/非表示", true, None::<&str>)?;
     let separator1 = PredefinedMenuItem::separator(app)?;
     let settings = MenuItem::with_id(app, "settings", "設定", true, None::<&str>)?;
+    let about = MenuItem::with_id(app, "about", "ClipOne について", true, None::<&str>)?;
     let separator2 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItem::with_id(app, "quit", "終了", true, None::<&str>)?;
     
-    let menu = Menu::with_items(app, &[&show_hide, &separator1, &settings, &separator2, &quit])?;
+    let menu = Menu::with_items(app, &[&show_hide, &separator1, &settings, &about, &separator2, &quit])?;
     
     // トレイアイコンを作成（既存の32x32アイコンを使用）
     let icon_bytes = include_bytes!("../icons/32x32.png");
@@ -85,6 +86,17 @@ fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
                         let _ = window.set_focus();
                         // 設定ページに遷移するイベントを送信
                         let _ = window.emit("tray-navigate-settings", ());
+                    }
+                }
+                "about" => {
+                    // アバウト画面を表示
+                    if let Some(window) = app.get_webview_window("main") {
+                        // まずウィンドウを表示
+                        WINDOW_SHOULD_BE_VISIBLE.store(true, Ordering::Relaxed);
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                        // アバウトページに遷移するイベントを送信
+                        let _ = window.emit("tray-navigate-about", ());
                     }
                 }
                 "quit" => {
@@ -198,6 +210,8 @@ pub fn run() {
             save_app_settings,
             update_setting,
             reset_settings,
+            // アプリ情報
+            get_app_info,
             // エクスポート/インポート
             export_clipboard_history_json,
             export_clipboard_history_csv,
