@@ -1,4 +1,4 @@
-use crate::database::{ClipboardItem, Database};
+use crate::database::{Database, DisplayClipboardItem};
 use clipboard_rs::{
     Clipboard, ClipboardContext, ClipboardHandler, ClipboardWatcher, ClipboardWatcherContext,
     ContentFormat,
@@ -121,15 +121,18 @@ impl ClipboardHandler for ClipboardManager {
                     }
                 };
 
+                // 正規化されたデータベースではコンテンツの重複チェック方法が異なる
                 let is_duplicate = recent_items
                     .iter()
-                    .any(|item| item.content == content_clone);
+                    .any(|item| {
+                        item.contents.iter().any(|content| content.content == content_clone)
+                    });
 
                 if !is_duplicate {
                     match db
                         .save_clipboard_item_with_all_formats(
-                            &content_clone, 
-                            &format_clone, 
+                            &content_clone,
+                            &format_clone,
                             Some("clipboard-rs"),
                             &formats_clone,
                             &format_clone,
@@ -166,7 +169,7 @@ pub async fn save_clipboard_item(
     content: String,
     content_type: Option<String>,
     source_app: Option<String>,
-) -> Result<ClipboardItem, String> {
+) -> Result<DisplayClipboardItem, String> {
     let db = db_state.lock().await;
     let content_type = content_type.unwrap_or_else(|| {
         // コンテンツタイプを自動判定
@@ -209,7 +212,10 @@ pub async fn check_duplicate_content(
         .await
         .map_err(|e| format!("履歴取得エラー: {}", e))?;
 
-    let is_duplicate = recent_items.iter().any(|item| item.content == content);
+    // 正規化されたデータベースでの重複チェック
+    let is_duplicate = recent_items.iter().any(|item| {
+        item.contents.iter().any(|content_item| content_item.content == content)
+    });
     Ok(is_duplicate)
 }
 

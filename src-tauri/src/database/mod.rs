@@ -1,13 +1,38 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{sqlite::SqlitePool, Row};
+use sqlx::{sqlite::SqlitePool, Row, migrate::Migrator};
 use std::path::PathBuf;
 use uuid::Uuid;
 
-/// クリップボードアイテムの構造体
+// SQLx標準マイグレーション
+ static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
+
+/// 正規化されたクリップボードアイテムの構造体
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClipboardItem {
+    pub id: String,
+    pub primary_format: String,
+    pub timestamp: i64,
+    pub is_favorite: bool,
+    pub source_app: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub contents: Vec<ClipboardContent>,
+}
+
+/// クリップボードコンテンツの構造体（正規化されたテーブル用）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClipboardContent {
+    pub item_id: String,
+    pub format: String,
+    pub content: String,
+    pub data_size: i64,
+    pub created_at: DateTime<Utc>,
+}
+
+/// 旧形式との互換性のためのDisplayClipboardItem（フロントエンド用）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DisplayClipboardItem {
     pub id: String,
     pub content: String,
     pub content_type: String,
@@ -15,10 +40,8 @@ pub struct ClipboardItem {
     pub is_favorite: bool,
     pub source_app: Option<String>,
     pub created_at: DateTime<Utc>,
-    pub available_formats: Option<String>,
-    pub primary_format: Option<String>,
-    pub data_size: Option<i64>,
-    pub format_contents: Option<String>,
+    pub available_formats: Option<Vec<String>>,
+    pub format_contents: Option<std::collections::HashMap<String, String>>,
 }
 
 /// データベース接続とマイグレーション管理
@@ -77,9 +100,27 @@ impl Database {
             }
         };
 
-        // マイグレーション実行
-        let mut db = Self { pool };
-        db.run_migrations().await?;
+        // SQLx標準マイグレーション実行
+        println!("🚀 SQLxマイグレーション実行中...");
+        match MIGRATOR.run(&pool).await {
+            Ok(_) => {
+                println!("✅ SQLxマイグレーション完了");
+            }
+            Err(e) => {
+                println!("❌ SQLxマイグレーションエラー: {}", e);
+                return Err(anyhow::anyhow!("マイグレーション失敗: {}", e));
+            }
+        }
+        
+        // テーブル作成確認
+        let table_check: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='clipboard_items'"
+        )
+        .fetch_one(&pool)
+        .await?;
+        println!("📈 clipboard_itemsテーブルの存在チェック: {}", table_check);
+        
+        let db = Self { pool };
 
         Ok(db)
     }
@@ -92,226 +133,53 @@ impl Database {
         Ok(app_dir.join("clipone.db"))
     }
 
-    /// マイグレーションを実行
-    async fn run_migrations(&mut self) -> Result<()> {
-        // 埋め込まれたマイグレーションファイルを実行
-        let migration_sql = include_str!("../../migrations/001_initial.sql");
 
-        // スキーマバージョンテーブルを作成
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS schema_version (
-                version INTEGER PRIMARY KEY,
-                applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )",
-        )
-        .execute(&self.pool)
-        .await?;
-
-        // バージョン1のマイグレーションが適用済みかチェック
-        let version_exists: bool =
-            sqlx::query_scalar("SELECT 1 FROM schema_version WHERE version = 1")
-                .fetch_optional(&self.pool)
-                .await?
-                .unwrap_or(false);
-
-        if !version_exists {
-            // マイグレーションを実行
-            sqlx::query(migration_sql).execute(&self.pool).await?;
-
-            // バージョンを記録
-            sqlx::query("INSERT INTO schema_version (version) VALUES (1)")
-                .execute(&self.pool)
-                .await?;
-        }
-
-        // バージョン2のマイグレーション（形式サポート拡張）
-        let migration_sql_v2 = include_str!("../../migrations/002_format_support.sql");
-        
-        let version_2_exists: bool =
-            sqlx::query_scalar("SELECT 1 FROM schema_version WHERE version = 2")
-                .fetch_optional(&self.pool)
-                .await?
-                .unwrap_or(false);
-
-        if !version_2_exists {
-            // マイグレーションを実行
-            sqlx::query(migration_sql_v2).execute(&self.pool).await?;
-
-            // バージョンを記録
-            sqlx::query("INSERT INTO schema_version (version) VALUES (2)")
-                .execute(&self.pool)
-                .await?;
-        }
-
-        // バージョン3のマイグレーション（複数形式コンテンツ）
-        let migration_sql_v3 = include_str!("../../migrations/003_multiple_formats.sql");
-        
-        let version_3_exists: bool =
-            sqlx::query_scalar("SELECT 1 FROM schema_version WHERE version = 3")
-                .fetch_optional(&self.pool)
-                .await?
-                .unwrap_or(false);
-
-        if !version_3_exists {
-            // マイグレーションを実行
-            sqlx::query(migration_sql_v3).execute(&self.pool).await?;
-
-            // バージョンを記録
-            sqlx::query("INSERT INTO schema_version (version) VALUES (3)")
-                .execute(&self.pool)
-                .await?;
-        }
-
-        Ok(())
-    }
-
-    /// クリップボードアイテムを保存（拡張版：複数形式コンテンツ対応）
-    pub async fn save_clipboard_item_with_all_formats(
+    /// 正規化されたデータベースでクリップボードアイテムとコンテンツを保存
+    pub async fn save_clipboard_item_normalized(
         &self,
-        content: &str,
-        content_type: &str,
-        source_app: Option<&str>,
-        available_formats: &[String],
         primary_format: &str,
+        source_app: Option<&str>,
         format_contents: &std::collections::HashMap<String, String>,
     ) -> Result<ClipboardItem> {
         let id = Uuid::new_v4().to_string();
         let timestamp = Utc::now().timestamp_millis();
         let created_at = Utc::now();
-        let data_size = content.len() as i64;
-        let formats_json = serde_json::to_string(available_formats).unwrap_or_else(|_| "[]".to_string());
-        let contents_json = serde_json::to_string(format_contents).unwrap_or_else(|_| "{}".to_string());
 
-        let item = ClipboardItem {
-            id: id.clone(),
-            content: content.to_string(),
-            content_type: content_type.to_string(),
-            timestamp,
-            is_favorite: false,
-            source_app: source_app.map(|s| s.to_string()),
-            created_at,
-            available_formats: Some(formats_json.clone()),
-            primary_format: Some(primary_format.to_string()),
-            data_size: Some(data_size),
-            format_contents: Some(contents_json.clone()),
-        };
-
+        // アイテムレコードを保存
         sqlx::query(
-            r#"
-            INSERT INTO clipboard_items (
-                id, content, content_type, timestamp, is_favorite, source_app,
-                available_formats, primary_format, data_size, format_contents
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "INSERT INTO clipboard_items (id, primary_format, timestamp, is_favorite, source_app, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)"
         )
         .bind(&id)
-        .bind(content)
-        .bind(content_type)
+        .bind(primary_format)
         .bind(timestamp)
         .bind(false)
         .bind(source_app)
-        .bind(&formats_json)
-        .bind(primary_format)
-        .bind(data_size)
-        .bind(&contents_json)
+        .bind(&created_at)
         .execute(&self.pool)
         .await?;
 
-        Ok(item)
+        // 各形式のコンテンツを保存
+        for (format, content) in format_contents {
+            let data_size = content.len() as i64;
+            sqlx::query(
+                "INSERT INTO clipboard_contents (item_id, format, content, data_size, created_at)
+                 VALUES (?, ?, ?, ?, ?)"
+            )
+            .bind(&id)
+            .bind(format)
+            .bind(content)
+            .bind(data_size)
+            .bind(&created_at)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        // 保存したアイテムを取得して返す
+        self.get_item_by_id(&id).await
     }
 
-    /// クリップボードアイテムを保存（拡張版）
-    pub async fn save_clipboard_item_with_formats(
-        &self,
-        content: &str,
-        content_type: &str,
-        source_app: Option<&str>,
-        available_formats: &[String],
-        primary_format: &str,
-    ) -> Result<ClipboardItem> {
-        let id = Uuid::new_v4().to_string();
-        let timestamp = Utc::now().timestamp_millis();
-        let created_at = Utc::now();
-        let data_size = content.len() as i64;
-        let formats_json = serde_json::to_string(available_formats).unwrap_or_else(|_| "[]".to_string());
-
-        let item = ClipboardItem {
-            id: id.clone(),
-            content: content.to_string(),
-            content_type: content_type.to_string(),
-            timestamp,
-            is_favorite: false,
-            source_app: source_app.map(String::from),
-            created_at,
-            available_formats: Some(formats_json.clone()),
-            primary_format: Some(primary_format.to_string()),
-            data_size: Some(data_size),
-            format_contents: None, // この関数では format_contents は保存しない
-        };
-
-        sqlx::query(
-            "INSERT INTO clipboard_items (id, content, content_type, timestamp, is_favorite, source_app, created_at, available_formats, primary_format, data_size)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        )
-        .bind(&item.id)
-        .bind(&item.content)
-        .bind(&item.content_type)
-        .bind(item.timestamp)
-        .bind(item.is_favorite)
-        .bind(&item.source_app)
-        .bind(&item.created_at)
-        .bind(&formats_json)
-        .bind(primary_format)
-        .bind(data_size)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(item)
-    }
-
-    /// クリップボードアイテムを保存（従来版 - 後方互換性のため）
-    pub async fn save_clipboard_item(
-        &self,
-        content: &str,
-        content_type: &str,
-        source_app: Option<&str>,
-    ) -> Result<ClipboardItem> {
-        let id = Uuid::new_v4().to_string();
-        let timestamp = Utc::now().timestamp_millis();
-        let created_at = Utc::now();
-
-        let item = ClipboardItem {
-            id: id.clone(),
-            content: content.to_string(),
-            content_type: content_type.to_string(),
-            timestamp,
-            is_favorite: false,
-            source_app: source_app.map(String::from),
-            created_at,
-            available_formats: None,
-            primary_format: None,
-            data_size: None,
-            format_contents: None,
-        };
-
-        sqlx::query(
-            "INSERT INTO clipboard_items (id, content, content_type, timestamp, is_favorite, source_app, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
-        )
-        .bind(&item.id)
-        .bind(&item.content)
-        .bind(&item.content_type)
-        .bind(item.timestamp)
-        .bind(item.is_favorite)
-        .bind(&item.source_app)
-        .bind(item.created_at)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(item)
-    }
-
-    /// 履歴を取得（ページネーション対応）
+    /// 履歴を取得（正規化されたデータベース用）
     pub async fn get_history(
         &self,
         limit: Option<u32>,
@@ -320,9 +188,8 @@ impl Database {
         let limit = limit.unwrap_or(100);
         let offset = offset.unwrap_or(0);
 
-        let rows = sqlx::query(
-            "SELECT id, content, content_type, timestamp, is_favorite, source_app, created_at,
-                    available_formats, primary_format, data_size, format_contents
+        let items = sqlx::query(
+            "SELECT id, primary_format, timestamp, is_favorite, source_app, created_at
              FROM clipboard_items
              ORDER BY timestamp DESC
              LIMIT ? OFFSET ?",
@@ -332,27 +199,81 @@ impl Database {
         .fetch_all(&self.pool)
         .await?;
 
-        let items = rows
+        let mut result = Vec::new();
+        for item_row in items {
+            let item_id: String = item_row.get("id");
+            
+            // コンテンツを取得
+            let contents = sqlx::query(
+                "SELECT item_id, format, content, data_size, created_at
+                 FROM clipboard_contents
+                 WHERE item_id = ?
+                 ORDER BY format"
+            )
+            .bind(&item_id)
+            .fetch_all(&self.pool)
+            .await?
             .into_iter()
-            .map(|row| ClipboardItem {
-                id: row.get("id"),
+            .map(|row| ClipboardContent {
+                item_id: row.get("item_id"),
+                format: row.get("format"),
                 content: row.get("content"),
-                content_type: row.get("content_type"),
-                timestamp: row.get("timestamp"),
-                is_favorite: row.get("is_favorite"),
-                source_app: row.get("source_app"),
+                data_size: row.get("data_size"),
                 created_at: row.get("created_at"),
-                available_formats: row.try_get("available_formats").ok(),
-                primary_format: row.try_get("primary_format").ok(),
-                data_size: row.try_get("data_size").ok(),
-                format_contents: row.try_get("format_contents").ok(),
             })
             .collect();
 
-        Ok(items)
+            result.push(ClipboardItem {
+                id: item_id,
+                primary_format: item_row.get("primary_format"),
+                timestamp: item_row.get("timestamp"),
+                is_favorite: item_row.get("is_favorite"),
+                source_app: item_row.get("source_app"),
+                created_at: item_row.get("created_at"),
+                contents,
+            });
+        }
+
+        Ok(result)
     }
 
-    /// 全文検索で履歴を検索
+    /// フロントエンド互換性のためのDisplayClipboardItemを取得
+    pub async fn get_display_history(
+        &self,
+        limit: Option<u32>,
+        offset: Option<u32>,
+    ) -> Result<Vec<DisplayClipboardItem>> {
+        let items = self.get_history(limit, offset).await?;
+        
+        let mut result = Vec::new();
+        for item in items {
+            let available_formats: Vec<String> = item.contents.iter().map(|c| c.format.clone()).collect();
+            let format_contents: std::collections::HashMap<String, String> = item.contents.iter()
+                .map(|c| (c.format.clone(), c.content.clone()))
+                .collect();
+            
+            // プライマリコンテンツを取得
+            let primary_content = format_contents.get(&item.primary_format)
+                .cloned()
+                .unwrap_or_else(|| "[No content]".to_string());
+
+            result.push(DisplayClipboardItem {
+                id: item.id,
+                content: primary_content,
+                content_type: item.primary_format.clone(),
+                timestamp: item.timestamp,
+                is_favorite: item.is_favorite,
+                source_app: item.source_app,
+                created_at: item.created_at,
+                available_formats: Some(available_formats),
+                format_contents: Some(format_contents),
+            });
+        }
+
+        Ok(result)
+    }
+
+    /// 全文検索で履歴を検索（正規化されたデータベース用）
     pub async fn search_history(
         &self,
         query: &str,
@@ -360,11 +281,10 @@ impl Database {
     ) -> Result<Vec<ClipboardItem>> {
         let limit = limit.unwrap_or(50);
 
-        let rows = sqlx::query(
-            "SELECT ci.id, ci.content, ci.content_type, ci.timestamp, ci.is_favorite, ci.source_app, ci.created_at,
-                    ci.available_formats, ci.primary_format, ci.data_size, ci.format_contents
-             FROM clipboard_items ci
-             JOIN clipboard_search cs ON ci.rowid = cs.rowid
+        let item_ids: Vec<String> = sqlx::query_scalar(
+            "SELECT DISTINCT cs.item_id
+             FROM clipboard_search cs
+             JOIN clipboard_items ci ON cs.item_id = ci.id
              WHERE clipboard_search MATCH ?
              ORDER BY ci.timestamp DESC
              LIMIT ?"
@@ -374,24 +294,55 @@ impl Database {
         .fetch_all(&self.pool)
         .await?;
 
-        let items = rows
-            .into_iter()
-            .map(|row| ClipboardItem {
-                id: row.get("id"),
-                content: row.get("content"),
-                content_type: row.get("content_type"),
-                timestamp: row.get("timestamp"),
-                is_favorite: row.get("is_favorite"),
-                source_app: row.get("source_app"),
-                created_at: row.get("created_at"),
-                available_formats: row.try_get("available_formats").ok(),
-                primary_format: row.try_get("primary_format").ok(),
-                data_size: row.try_get("data_size").ok(),
-                format_contents: row.try_get("format_contents").ok(),
-            })
-            .collect();
+        let mut result = Vec::new();
+        for item_id in item_ids {
+            if let Ok(item) = self.get_item_by_id(&item_id).await {
+                result.push(item);
+            }
+        }
 
-        Ok(items)
+        Ok(result)
+    }
+
+    /// IDでアイテムを取得（正規化されたデータベース用）
+    pub async fn get_item_by_id(&self, id: &str) -> Result<ClipboardItem> {
+        let item_row = sqlx::query(
+            "SELECT id, primary_format, timestamp, is_favorite, source_app, created_at
+             FROM clipboard_items
+             WHERE id = ?"
+        )
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let contents = sqlx::query(
+            "SELECT item_id, format, content, data_size, created_at
+             FROM clipboard_contents
+             WHERE item_id = ?
+             ORDER BY format"
+        )
+        .bind(id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(|row| ClipboardContent {
+            item_id: row.get("item_id"),
+            format: row.get("format"),
+            content: row.get("content"),
+            data_size: row.get("data_size"),
+            created_at: row.get("created_at"),
+        })
+        .collect();
+
+        Ok(ClipboardItem {
+            id: item_row.get("id"),
+            primary_format: item_row.get("primary_format"),
+            timestamp: item_row.get("timestamp"),
+            is_favorite: item_row.get("is_favorite"),
+            source_app: item_row.get("source_app"),
+            created_at: item_row.get("created_at"),
+            contents,
+        })
     }
 
     /// お気に入りの切り替え
@@ -415,6 +366,7 @@ impl Database {
 
     /// アイテム削除
     pub async fn delete_item(&self, id: &str) -> Result<()> {
+        // 外部キー制約でclipboard_contentsは自動削除される
         sqlx::query("DELETE FROM clipboard_items WHERE id = ?")
             .bind(id)
             .execute(&self.pool)
@@ -423,8 +375,9 @@ impl Database {
         Ok(())
     }
 
-    /// 履歴をクリア
+    /// 履歴をクリア（正規化されたデータベース用）
     pub async fn clear_history(&self) -> Result<()> {
+        // 外部キー制約でclipboard_contentsは自動削除される
         sqlx::query("DELETE FROM clipboard_items")
             .execute(&self.pool)
             .await?;
@@ -462,5 +415,76 @@ impl Database {
         sqlx::query("VACUUM").execute(&self.pool).await?;
 
         Ok(())
+    }
+
+    /// 後方互換性のための旧形式インターフェース（単一コンテンツ）
+    pub async fn save_clipboard_item(
+        &self,
+        content: &str,
+        content_type: &str,
+        source_app: Option<&str>,
+    ) -> Result<DisplayClipboardItem> {
+        // 単一形式のコンテンツを正規化されたメソッドで保存
+        let mut format_contents = std::collections::HashMap::new();
+        format_contents.insert(content_type.to_string(), content.to_string());
+        
+        let item = self.save_clipboard_item_normalized(
+            content_type,
+            source_app,
+            &format_contents
+        ).await?;
+        
+        // DisplayClipboardItemに変換して返す
+        let available_formats: Vec<String> = item.contents.iter().map(|c| c.format.clone()).collect();
+        let format_contents_map: std::collections::HashMap<String, String> = item.contents.iter()
+            .map(|c| (c.format.clone(), c.content.clone()))
+            .collect();
+
+        Ok(DisplayClipboardItem {
+            id: item.id,
+            content: content.to_string(),
+            content_type: content_type.to_string(),
+            timestamp: item.timestamp,
+            is_favorite: item.is_favorite,
+            source_app: item.source_app,
+            created_at: item.created_at,
+            available_formats: Some(available_formats),
+            format_contents: Some(format_contents_map),
+        })
+    }
+    
+    /// 後方互換性のための旧形式インターフェース（複数コンテンツ）
+    pub async fn save_clipboard_item_with_all_formats(
+        &self,
+        content: &str,
+        content_type: &str,
+        source_app: Option<&str>,
+        _available_formats: &[String],
+        primary_format: &str,
+        format_contents: &std::collections::HashMap<String, String>,
+    ) -> Result<DisplayClipboardItem> {
+        let item = self.save_clipboard_item_normalized(
+            primary_format,
+            source_app,
+            format_contents
+        ).await?;
+        
+        // DisplayClipboardItemに変換して返す
+        let available_formats_vec: Vec<String> = item.contents.iter().map(|c| c.format.clone()).collect();
+        let format_contents_map: std::collections::HashMap<String, String> = item.contents.iter()
+            .map(|c| (c.format.clone(), c.content.clone()))
+            .collect();
+
+        Ok(DisplayClipboardItem {
+            id: item.id,
+            content: content.to_string(),
+            content_type: content_type.to_string(), 
+            timestamp: item.timestamp,
+            is_favorite: item.is_favorite,
+            source_app: item.source_app,
+            created_at: item.created_at,
+            available_formats: Some(available_formats_vec),
+            format_contents: Some(format_contents_map),
+        })
     }
 }

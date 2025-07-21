@@ -1,4 +1,4 @@
-use crate::database::{ClipboardItem, Database};
+use crate::database::{Database, DisplayClipboardItem};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -11,7 +11,7 @@ pub struct ExportData {
     pub version: String,
     pub exported_at: DateTime<Utc>,
     pub total_items: usize,
-    pub items: Vec<ClipboardItem>,
+    pub items: Vec<DisplayClipboardItem>,
 }
 
 /// クリップボード履歴をJSONフォーマットでエクスポート
@@ -21,7 +21,7 @@ pub async fn export_clipboard_history_json(
 ) -> Result<String, String> {
     let db = db_state.lock().await;
     let items = db
-        .get_history(None, None)
+        .get_display_history(None, None)
         .await
         .map_err(|e| format!("履歴取得エラー: {}", e))?;
 
@@ -43,7 +43,7 @@ pub async fn export_clipboard_history_csv(
 ) -> Result<String, String> {
     let db = db_state.lock().await;
     let items = db
-        .get_history(None, None)
+        .get_display_history(None, None)
         .await
         .map_err(|e| format!("履歴取得エラー: {}", e))?;
 
@@ -85,7 +85,7 @@ pub async fn import_clipboard_history_json(
     for item in export_data.items {
         // 重複チェック
         let existing_items = db
-            .get_history(Some(1000), None)
+            .get_display_history(Some(1000), None)
             .await
             .map_err(|e| format!("既存履歴取得エラー: {}", e))?;
 
