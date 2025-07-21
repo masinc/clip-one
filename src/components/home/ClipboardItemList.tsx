@@ -46,6 +46,92 @@ export function ClipboardItemList({
     return { format: selectedFormat, content };
   };
 
+  // 画像を別ウィンドウで表示
+  const handleImageWindow = (imageData: string) => {
+    console.log("🖼️ 画像別ウィンドウ表示:", `${imageData.substring(0, 50)}...`);
+
+    // 画像サイズを取得するための一時的なImage要素を作成
+    const tempImg = new Image();
+    tempImg.onload = () => {
+      const imgWidth = tempImg.width;
+      const imgHeight = tempImg.height;
+
+      // デスクトップサイズを取得
+      const screenWidth = window.screen.availWidth;
+      const screenHeight = window.screen.availHeight;
+
+      // ウィンドウサイズを計算（画像サイズに合わせる、ただしデスクトップサイズを超える場合は縮小）
+      let windowWidth = imgWidth;
+      let windowHeight = imgHeight;
+
+      // デスクトップサイズの90%を最大値とする
+      const maxWidth = screenWidth * 0.9;
+      const maxHeight = screenHeight * 0.9;
+
+      // 縦横どちらかがデスクトップサイズを超える場合、アスペクト比を維持して縮小
+      if (windowWidth > maxWidth || windowHeight > maxHeight) {
+        const scaleWidth = maxWidth / windowWidth;
+        const scaleHeight = maxHeight / windowHeight;
+        const scale = Math.min(scaleWidth, scaleHeight); // より小さいスケールを選択
+
+        windowWidth = windowWidth * scale;
+        windowHeight = windowHeight * scale;
+      }
+
+      const newWindow = window.open(
+        "",
+        "_blank",
+        `width=${Math.round(windowWidth)},height=${Math.round(windowHeight)},scrollbars=no,resizable=yes`,
+      );
+      if (newWindow) {
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>ClipOne - 画像表示</title>
+            <style>
+              body { 
+                margin: 0; 
+                background: #000; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                min-height: 100vh;
+                overflow: hidden;
+              }
+              img { 
+                max-width: 100vw; 
+                max-height: 100vh; 
+                object-fit: contain;
+                cursor: pointer;
+              }
+            </style>
+          </head>
+          <body>
+            <img src="${imageData}" alt="クリップボード画像" onclick="window.close()" />
+            <script>
+              document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                  window.close();
+                }
+              });
+              
+              document.addEventListener('click', function(event) {
+                window.close();
+              });
+            </script>
+          </body>
+          </html>
+        `);
+        newWindow.document.close();
+      } else {
+        console.error("❌ 別ウィンドウを開けませんでした（ポップアップブロックされた可能性があります）");
+      }
+    };
+
+    tempImg.src = imageData;
+  };
+
   const handleAddTestData = async () => {
     try {
       const result = await invoke("add_test_data");
@@ -104,7 +190,7 @@ export function ClipboardItemList({
   }
 
   return (
-    <div className="p-2">
+    <div className="p-2 relative">
       {clipboardItems.map((item, index) => {
         const isExpanded = expandedItems.has(item.id);
         const { format: currentFormat, content: currentContent } = getCurrentFormatAndContent(item);
@@ -122,7 +208,11 @@ export function ClipboardItemList({
                 <span className="text-xs">{getTypeIcon(currentFormat)}</span>
               </div>
 
-              <div className="min-w-0 cursor-default text-left" onClick={() => onItemClick(item.id)}>
+              <button
+                type="button"
+                className="min-w-0 cursor-default text-left bg-transparent border-none p-0 w-full"
+                onClick={() => onItemClick(item.id)}
+              >
                 <div className="flex items-center gap-2 mb-1">
                   <Hash className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs font-mono text-muted-foreground">{index + 1}</span>
@@ -171,7 +261,7 @@ export function ClipboardItemList({
                     {parseFileList(currentContent)
                       .slice(0, isExpanded ? undefined : 3)
                       .map((file, i) => (
-                        <div key={i} className="flex items-center gap-2">
+                        <div key={`${file.filename}-${i}`} className="flex items-center gap-2">
                           <span className="text-base">{file.icon}</span>
                           <span className="break-words">{file.filename}</span>
                         </div>
@@ -187,18 +277,39 @@ export function ClipboardItemList({
                   <div className="text-sm">
                     {currentContent.startsWith("data:image/") ? (
                       <div className="space-y-2">
-                        <img 
-                          src={currentContent} 
+                        <img
+                          src={currentContent}
                           alt="クリップボード画像"
-                          className="max-w-full max-h-48 rounded border object-contain bg-muted"
+                          className="max-w-full max-h-48 rounded border object-contain bg-muted cursor-pointer transition-all hover:opacity-80"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log(
+                              "🖼️ 画像クリック - 別ウィンドウ表示:",
+                              currentFormat,
+                              "データ長:",
+                              currentContent.length,
+                            );
+                            handleImageWindow(currentContent);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleImageWindow(currentContent);
+                            }
+                          }}
                           onError={(e) => {
                             console.error("画像表示エラー:", e);
                             e.currentTarget.style.display = "none";
                           }}
+                          title="クリックで別ウィンドウ表示"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          画像データ ({Math.round(currentContent.length / 1024)}KB)
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            画像データ ({Math.round(currentContent.length / 1024)}KB)
+                          </p>
+                          <p className="text-xs text-muted-foreground">クリックで別ウィンドウ表示</p>
+                        </div>
                       </div>
                     ) : (
                       <p className="text-muted-foreground">{displayContent}</p>
@@ -208,7 +319,7 @@ export function ClipboardItemList({
                   // 通常のテキスト表示
                   <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{displayContent}</p>
                 )}
-              </div>
+              </button>
 
               <div className="ml-2">
                 <Button
