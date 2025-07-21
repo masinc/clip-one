@@ -150,7 +150,8 @@ export function ClipboardItemList({
                   // URL表示 - クリック可能なリンク
                   <div className="text-sm">
                     <button
-                      className="text-blue-500 hover:text-blue-700 underline break-words"
+                      type="button"
+                      className="text-blue-500 hover:text-blue-700 underline break-words cursor-pointer text-left w-full"
                       onClick={async (e) => {
                         e.stopPropagation();
                         try {
