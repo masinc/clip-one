@@ -117,12 +117,12 @@ export function ClipboardItemList({
             className="mb-1 p-3 hover:bg-accent hover:text-accent-foreground transition-colors border hover:border-accent-foreground/20 group"
             onContextMenu={(e) => onContextMenu(e, item)}
           >
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-0.5">
+            <div className="grid grid-cols-[auto_1fr_auto] gap-3 items-start">
+              <div className="mt-0.5">
                 <span className="text-xs">{getTypeIcon(currentFormat)}</span>
               </div>
 
-              <div className="flex-1 min-w-0 cursor-default text-left" onClick={() => onItemClick(item.id)}>
+              <div className="min-w-0 cursor-default text-left" onClick={() => onItemClick(item.id)}>
                 <div className="flex items-center gap-2 mb-1">
                   <Hash className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs font-mono text-muted-foreground">{index + 1}</span>
@@ -188,11 +188,11 @@ export function ClipboardItemList({
                 )}
               </div>
 
-              <div className="flex-shrink-0 ml-2">
+              <div className="ml-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  className="h-6 w-6 hover:bg-accent transition-opacity cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigator.clipboard.writeText(currentContent);
