@@ -78,6 +78,7 @@ export default function Home() {
 
     // 直接clipboard-updatedイベントをリッスンして履歴リストを即座に更新
     let unlistenClipboardUpdated: (() => void) | null = null;
+    let unlistenTrayEvents: (() => void) | null = null;
 
     const setupDirectEventListener = async () => {
       try {
@@ -107,6 +108,28 @@ export default function Home() {
 
     setupDirectEventListener();
 
+    // トレイイベントリスナーを設定
+    const setupTrayEventListener = async () => {
+      try {
+        unlistenTrayEvents = await listen("tray-clear-history", async () => {
+          console.log("🗑️ トレイから履歴クリア要求を受信");
+          try {
+            await historyApi.clearClipboardHistory();
+            setClipboardItems([]);
+            console.log("✅ トレイから履歴をクリアしました");
+          } catch (error) {
+            console.error("❌ トレイからの履歴クリアエラー:", error);
+            setError("履歴のクリアに失敗しました");
+          }
+        });
+        console.log("✅ トレイイベントリスナー設定完了");
+      } catch (err) {
+        console.error("❌ トレイイベントリスナー設定エラー:", err);
+      }
+    };
+
+    setupTrayEventListener();
+
     // クリップボード監視開始（遅延）
     const timer = setTimeout(() => {
       console.log("🚀 クリップボード監視開始処理開始...");
@@ -134,6 +157,9 @@ export default function Home() {
       clearTimeout(timer);
       if (unlistenClipboardUpdated) {
         unlistenClipboardUpdated();
+      }
+      if (unlistenTrayEvents) {
+        unlistenTrayEvents();
       }
       console.log("Home コンポーネントクリーンアップ");
       clipboard.stopMonitoring().catch(console.error);
