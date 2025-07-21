@@ -8,10 +8,9 @@ import { HomeHeader } from "@/components/home/HomeHeader";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useActions } from "@/contexts/ActionsContext";
 import { useClipboard } from "@/hooks/useClipboard";
-import type { ClipboardItem } from "@/types/clipboard";
+// import type { ClipboardItem } from "@/types/clipboard"; // 使用しない
 import type { ClipboardAction, ContextMenuState, DisplayClipboardItem } from "@/types/clipboardActions";
 import { convertToClipboardAction, searchActions } from "@/utils/clipboard/actionUtils";
-import { convertClipboardItem } from "@/utils/clipboard/itemUtils";
 import { calculateMenuPosition } from "@/utils/menuPosition";
 import { historyApi } from "@/utils/tauri-api";
 
@@ -52,9 +51,10 @@ export default function Home() {
 
       const items = await historyApi.getHistory(100);
       console.log("取得したアイテム数:", items.length);
+      console.log("最初のアイテムのデータ:", items[0]); // デバッグ情報
 
-      const convertedItems = items.map(convertClipboardItem);
-      setClipboardItems(convertedItems);
+      // DisplayClipboardItemを直接使用（変換不要）
+      setClipboardItems(items);
     } catch (err) {
       console.error("履歴取得エラー:", err);
       setError("履歴の取得に失敗しました");
@@ -81,9 +81,9 @@ export default function Home() {
 
     const setupDirectEventListener = async () => {
       try {
-        unlistenClipboardUpdated = await listen<ClipboardItem>("clipboard-updated", (event) => {
+        unlistenClipboardUpdated = await listen<DisplayClipboardItem>("clipboard-updated", (event) => {
           console.log("📨 直接受信: clipboard-updatedイベント:", event.payload);
-          const newItem = convertClipboardItem(event.payload);
+          const newItem = event.payload; // 既にDisplayClipboardItem形式
 
           // 履歴リストの先頭に新しいアイテムを追加
           setClipboardItems((prevItems) => {
@@ -244,7 +244,7 @@ export default function Home() {
     const clipboardActions = getClipboardActions();
 
     const availableActions = clipboardActions.filter(
-      (action) => !action.condition || action.condition(item.content, item.type),
+      (action) => !action.condition || action.condition(item.content, item.content_type),
     );
 
     const filteredActions = searchActions(availableActions, searchQuery);

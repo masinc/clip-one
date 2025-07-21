@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { Clock, Copy, Hash } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -6,8 +7,7 @@ import { Card } from "@/components/ui/card";
 import { FormatBadges } from "@/components/ui/format-badges";
 import type { DisplayClipboardItem } from "@/types/clipboardActions";
 import { formatRelativeTime } from "@/utils/dateUtils";
-import { getTypeIcon, getTypeName, truncateText, parseFileList } from "@/utils/textUtils";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { getTypeIcon, getTypeName, parseFileList, truncateText } from "@/utils/textUtils";
 
 interface ClipboardItemListProps {
   clipboardItems: DisplayClipboardItem[];
@@ -33,16 +33,16 @@ export function ClipboardItemList({
 
   // 形式切り替えハンドラー
   const handleFormatChange = (itemId: string, format: string) => {
-    setSelectedFormats(prev => ({
+    setSelectedFormats((prev) => ({
       ...prev,
-      [itemId]: format
+      [itemId]: format,
     }));
   };
 
   // アイテムの現在の形式とコンテンツを取得
   const getCurrentFormatAndContent = (item: DisplayClipboardItem) => {
-    const selectedFormat = selectedFormats[item.id] || item.type;
-    const content = item.formatContents?.[selectedFormat] || item.content;
+    const selectedFormat = selectedFormats[item.id] || item.content_type;
+    const content = item.format_contents?.[selectedFormat] || item.content;
     return { format: selectedFormat, content };
   };
 
@@ -122,10 +122,7 @@ export function ClipboardItemList({
                 <span className="text-xs">{getTypeIcon(currentFormat)}</span>
               </div>
 
-              <div
-                className="flex-1 min-w-0 cursor-default text-left"
-                onClick={() => onItemClick(item.id)}
-              >
+              <div className="flex-1 min-w-0 cursor-default text-left" onClick={() => onItemClick(item.id)}>
                 <div className="flex items-center gap-2 mb-1">
                   <Hash className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs font-mono text-muted-foreground">{index + 1}</span>
@@ -139,16 +136,16 @@ export function ClipboardItemList({
                 </div>
 
                 {/* 複数形式バッジ */}
-                {item.availableFormats && (
+                {item.available_formats && (
                   <FormatBadges
-                    availableFormats={item.availableFormats}
+                    availableFormats={item.available_formats}
                     currentFormat={currentFormat}
                     onFormatChange={(format) => handleFormatChange(item.id, format)}
-                    mainFormat={item.type}
+                    mainFormat={item.content_type}
                   />
                 )}
 
-{/* コンテンツ表示 - 形式別の特殊表示 */}
+                {/* コンテンツ表示 - 形式別の特殊表示 */}
                 {currentFormat === "text/uri-list" ? (
                   // URL表示 - クリック可能なリンク
                   <div className="text-sm">
@@ -159,7 +156,7 @@ export function ClipboardItemList({
                         try {
                           await openUrl(currentContent.trim());
                         } catch (error) {
-                          console.error('URL開く失敗:', error);
+                          console.error("URL開く失敗:", error);
                         }
                       }}
                       title={`${currentContent} を外部ブラウザで開く`}
@@ -170,12 +167,14 @@ export function ClipboardItemList({
                 ) : currentFormat === "application/x-file-list" ? (
                   // ファイルリスト表示 - アイコン付きリスト
                   <div className="text-sm space-y-1">
-                    {parseFileList(currentContent).slice(0, isExpanded ? undefined : 3).map((file, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="text-base">{file.icon}</span>
-                        <span className="break-words">{file.filename}</span>
-                      </div>
-                    ))}
+                    {parseFileList(currentContent)
+                      .slice(0, isExpanded ? undefined : 3)
+                      .map((file, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="text-base">{file.icon}</span>
+                          <span className="break-words">{file.filename}</span>
+                        </div>
+                      ))}
                     {!isExpanded && parseFileList(currentContent).length > 3 && (
                       <div className="text-xs text-muted-foreground">
                         +{parseFileList(currentContent).length - 3}個のファイル...

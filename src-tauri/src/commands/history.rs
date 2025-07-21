@@ -1,4 +1,4 @@
-use crate::database::{ClipboardItem, Database};
+use crate::database::{Database, DisplayClipboardItem};
 use std::sync::Arc;
 use tauri::State;
 use tokio::sync::Mutex;
@@ -9,7 +9,7 @@ pub async fn get_clipboard_history(
     db_state: State<'_, Arc<Mutex<Database>>>,
     limit: Option<u32>,
     offset: Option<u32>,
-) -> Result<Vec<ClipboardItem>, String> {
+) -> Result<Vec<DisplayClipboardItem>, String> {
     println!(
         "get_clipboard_history コマンド呼び出し: limit={:?}, offset={:?}",
         limit, offset
@@ -17,7 +17,7 @@ pub async fn get_clipboard_history(
 
     let db = db_state.lock().await;
 
-    match db.get_history(limit, offset).await {
+    match db.get_display_history(limit, offset).await {
         Ok(items) => {
             println!("履歴取得成功: {} 件", items.len());
             Ok(items)
@@ -36,11 +36,37 @@ pub async fn search_clipboard_history(
     db_state: State<'_, Arc<Mutex<Database>>>,
     query: String,
     limit: Option<u32>,
-) -> Result<Vec<ClipboardItem>, String> {
+) -> Result<Vec<DisplayClipboardItem>, String> {
     let db = db_state.lock().await;
-    db.search_history(&query, limit)
-        .await
-        .map_err(|e| format!("履歴検索エラー: {}", e))
+    // 正規化された検索結果をDisplayClipboardItemに変換
+    let search_results = db.search_history(&query, limit).await
+        .map_err(|e| format!("履歴検索エラー: {}", e))?;
+    
+    let mut display_results = Vec::new();
+    for item in search_results {
+        let available_formats: Vec<String> = item.contents.iter().map(|c| c.format.clone()).collect();
+        let format_contents: std::collections::HashMap<String, String> = item.contents.iter()
+            .map(|c| (c.format.clone(), c.content.clone()))
+            .collect();
+        
+        let primary_content = format_contents.get(&item.primary_format)
+            .cloned()
+            .unwrap_or_else(|| "[No content]".to_string());
+
+        display_results.push(DisplayClipboardItem {
+            id: item.id,
+            content: primary_content,
+            content_type: item.primary_format.clone(),
+            timestamp: item.timestamp,
+            is_favorite: item.is_favorite,
+            source_app: item.source_app,
+            created_at: item.created_at,
+            available_formats: Some(available_formats),
+            format_contents: Some(format_contents),
+        });
+    }
+    
+    Ok(display_results)
 }
 
 /// 特定のアイテムを取得
@@ -48,10 +74,10 @@ pub async fn search_clipboard_history(
 pub async fn get_clipboard_item(
     db_state: State<'_, Arc<Mutex<Database>>>,
     id: String,
-) -> Result<Option<ClipboardItem>, String> {
+) -> Result<Option<DisplayClipboardItem>, String> {
     let db = db_state.lock().await;
     let items = db
-        .get_history(None, None)
+        .get_display_history(None, None)
         .await
         .map_err(|e| format!("履歴取得エラー: {}", e))?;
 
@@ -107,7 +133,7 @@ pub async fn get_clipboard_stats(
         .map_err(|e| format!("統計取得エラー: {}", e))?;
 
     let items = db
-        .get_history(None, None)
+        .get_display_history(None, None)
         .await
         .map_err(|e| format!("履歴取得エラー: {}", e))?;
 

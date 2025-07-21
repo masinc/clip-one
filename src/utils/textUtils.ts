@@ -25,7 +25,6 @@ export function getTypeIcon(type: string): string {
       return "📁";
     case "application/x-file-path":
       return "📄";
-    case "text/plain":
     default:
       return "📄";
   }
@@ -50,7 +49,6 @@ export function getTypeName(type: string): string {
       return "ファイルリスト";
     case "application/x-file-path":
       return "ファイルパス";
-    case "text/plain":
     default:
       return "テキスト";
   }
@@ -60,108 +58,107 @@ export function getTypeName(type: string): string {
  * ファイル拡張子に応じた絵文字アイコンを取得
  */
 export function getFileIcon(filename: string): string {
-  const ext = filename.toLowerCase().split('.').pop() || '';
-  
+  const ext = filename.toLowerCase().split(".").pop() || "";
+
   switch (ext) {
     // ドキュメント
-    case 'doc':
-    case 'docx':
-    case 'txt':
-    case 'rtf':
-      return '📄';
-    
+    case "doc":
+    case "docx":
+    case "txt":
+    case "rtf":
+      return "📄";
+
     // スプレッドシート
-    case 'xls':
-    case 'xlsx':
-    case 'csv':
-      return '📊';
-    
+    case "xls":
+    case "xlsx":
+    case "csv":
+      return "📊";
+
     // プレゼンテーション
-    case 'ppt':
-    case 'pptx':
-      return '📋';
-    
+    case "ppt":
+    case "pptx":
+      return "📋";
+
     // PDF
-    case 'pdf':
-      return '📕';
-    
+    case "pdf":
+      return "📕";
+
     // 画像
-    case 'jpg':
-    case 'jpeg':
-    case 'png':
-    case 'gif':
-    case 'bmp':
-    case 'svg':
-    case 'webp':
-      return '🖼️';
-    
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "gif":
+    case "bmp":
+    case "svg":
+    case "webp":
+      return "🖼️";
+
     // 音声
-    case 'mp3':
-    case 'wav':
-    case 'flac':
-    case 'aac':
-    case 'm4a':
-      return '🎵';
-    
+    case "mp3":
+    case "wav":
+    case "flac":
+    case "aac":
+    case "m4a":
+      return "🎵";
+
     // 動画
-    case 'mp4':
-    case 'avi':
-    case 'mkv':
-    case 'mov':
-    case 'wmv':
-    case 'webm':
-      return '🎬';
-    
+    case "mp4":
+    case "avi":
+    case "mkv":
+    case "mov":
+    case "wmv":
+    case "webm":
+      return "🎬";
+
     // アーカイブ
-    case 'zip':
-    case 'rar':
-    case '7z':
-    case 'tar':
-    case 'gz':
-      return '📦';
-    
+    case "zip":
+    case "rar":
+    case "7z":
+    case "tar":
+    case "gz":
+      return "📦";
+
     // プログラム
-    case 'js':
-    case 'ts':
-    case 'jsx':
-    case 'tsx':
-    case 'html':
-    case 'css':
-    case 'py':
-    case 'java':
-    case 'c':
-    case 'cpp':
-    case 'rs':
-    case 'go':
-      return '💻';
-    
+    case "js":
+    case "ts":
+    case "jsx":
+    case "tsx":
+    case "html":
+    case "css":
+    case "py":
+    case "java":
+    case "c":
+    case "cpp":
+    case "rs":
+    case "go":
+      return "💻";
+
     // 実行ファイル
-    case 'exe':
-    case 'msi':
-    case 'dmg':
-    case 'deb':
-    case 'rpm':
-      return '⚙️';
-    
+    case "exe":
+    case "msi":
+    case "dmg":
+    case "deb":
+    case "rpm":
+      return "⚙️";
+
     // デフォルト
     default:
-      return '📁';
+      return "📁";
   }
 }
 
 /**
  * ファイルリストテキストを解析してファイル情報を取得
  */
-export function parseFileList(fileListText: string): Array<{filename: string, icon: string}> {
-  const lines = fileListText.split('\n').filter(line => line.trim());
-  
-  return lines.map(line => {
+export function parseFileList(fileListText: string): Array<{ filename: string; icon: string }> {
+  const lines = fileListText.split("\n").filter((line) => line.trim());
+
+  return lines.map((line) => {
     // ファイルパスからファイル名を抽出
-    const filename = line.split(/[\\\/]/).pop() || line;
+    const filename = line.split(/[\\/]/).pop() || line;
     return {
       filename: filename.trim(),
-      icon: getFileIcon(filename)
+      icon: getFileIcon(filename),
     };
   });
 }
-

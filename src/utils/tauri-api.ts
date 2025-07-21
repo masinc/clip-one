@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { AppSettings, ClipboardItem, ClipboardStats, ExportFormat } from "@/types/clipboard";
+import type { DisplayClipboardItem } from "@/types/clipboardActions";
 
 // クリップボード操作API
 export const clipboardApi = {
@@ -31,16 +32,16 @@ export const clipboardApi = {
 
 // 履歴管理API
 export const historyApi = {
-  // 履歴取得
-  getHistory: (limit?: number, offset?: number): Promise<ClipboardItem[]> =>
+  // 履歴取得（正規化されたデータベース用）
+  getHistory: (limit?: number, offset?: number): Promise<DisplayClipboardItem[]> =>
     invoke("get_clipboard_history", { limit: limit || null, offset: offset || null }),
 
-  // 履歴検索
-  searchHistory: (query: string, limit?: number): Promise<ClipboardItem[]> =>
+  // 履歴検索（正規化されたデータベース用）
+  searchHistory: (query: string, limit?: number): Promise<DisplayClipboardItem[]> =>
     invoke("search_clipboard_history", { query, limit }),
 
-  // 特定アイテム取得
-  getItem: (id: string): Promise<ClipboardItem | null> => invoke("get_clipboard_item", { id }),
+  // 特定アイテム取得（正規化されたデータベース用）
+  getItem: (id: string): Promise<DisplayClipboardItem | null> => invoke("get_clipboard_item", { id }),
 
   // お気に入り切り替え
   toggleFavorite: (id: string): Promise<boolean> => invoke("toggle_favorite", { id }),
