@@ -1,10 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Clock, Copy, Hash } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { FormatBadges } from "@/components/ui/format-badges";
 import type { DisplayClipboardItem } from "@/types/clipboardActions";
 import { formatRelativeTime } from "@/utils/dateUtils";
-import { getTypeIcon, truncateText } from "@/utils/textUtils";
+import { getTypeIcon, getTypeName, truncateText, parseFileList } from "@/utils/textUtils";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 interface ClipboardItemListProps {
   clipboardItems: DisplayClipboardItem[];
@@ -25,6 +28,24 @@ export function ClipboardItemList({
   onHistoryReload,
   onContextMenu,
 }: ClipboardItemListProps) {
+  // 各アイテムの選択された形式を管理
+  const [selectedFormats, setSelectedFormats] = useState<Record<string, string>>({});
+
+  // 形式切り替えハンドラー
+  const handleFormatChange = (itemId: string, format: string) => {
+    setSelectedFormats(prev => ({
+      ...prev,
+      [itemId]: format
+    }));
+  };
+
+  // アイテムの現在の形式とコンテンツを取得
+  const getCurrentFormatAndContent = (item: DisplayClipboardItem) => {
+    const selectedFormat = selectedFormats[item.id] || item.type;
+    const content = item.formatContents?.[selectedFormat] || item.content;
+    return { format: selectedFormat, content };
+  };
+
   const handleAddTestData = async () => {
     try {
       const result = await invoke("add_test_data");
@@ -86,8 +107,9 @@ export function ClipboardItemList({
     <div className="p-2">
       {clipboardItems.map((item, index) => {
         const isExpanded = expandedItems.has(item.id);
-        const shouldTruncate = item.content.length > 100;
-        const displayContent = isExpanded || !shouldTruncate ? item.content : truncateText(item.content);
+        const { format: currentFormat, content: currentContent } = getCurrentFormatAndContent(item);
+        const shouldTruncate = currentContent.length > 100;
+        const displayContent = isExpanded || !shouldTruncate ? currentContent : truncateText(currentContent);
 
         return (
           <Card
@@ -97,12 +119,11 @@ export function ClipboardItemList({
           >
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 mt-0.5">
-                <span className="text-xs">{getTypeIcon(item.type)}</span>
+                <span className="text-xs">{getTypeIcon(currentFormat)}</span>
               </div>
 
-              <button
-                type="button"
-                className="flex-1 min-w-0 cursor-default text-left bg-transparent border-none p-0"
+              <div
+                className="flex-1 min-w-0 cursor-default text-left"
                 onClick={() => onItemClick(item.id)}
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -112,13 +133,60 @@ export function ClipboardItemList({
                     <Clock className="h-3 w-3" />
                     {formatRelativeTime(item.timestamp)}
                   </div>
-                  {item.app && (
-                    <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">{item.app}</span>
-                  )}
+                  <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+                    {getTypeName(currentFormat)}
+                  </span>
                 </div>
 
-                <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{displayContent}</p>
-              </button>
+                {/* 複数形式バッジ */}
+                {item.availableFormats && (
+                  <FormatBadges
+                    availableFormats={item.availableFormats}
+                    currentFormat={currentFormat}
+                    onFormatChange={(format) => handleFormatChange(item.id, format)}
+                    mainFormat={item.type}
+                  />
+                )}
+
+{/* コンテンツ表示 - 形式別の特殊表示 */}
+                {currentFormat === "text/uri-list" ? (
+                  // URL表示 - クリック可能なリンク
+                  <div className="text-sm">
+                    <button
+                      className="text-blue-500 hover:text-blue-700 underline break-words"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await openUrl(currentContent.trim());
+                        } catch (error) {
+                          console.error('URL開く失敗:', error);
+                        }
+                      }}
+                      title={`${currentContent} を外部ブラウザで開く`}
+                    >
+                      {displayContent}
+                    </button>
+                  </div>
+                ) : currentFormat === "application/x-file-list" ? (
+                  // ファイルリスト表示 - アイコン付きリスト
+                  <div className="text-sm space-y-1">
+                    {parseFileList(currentContent).slice(0, isExpanded ? undefined : 3).map((file, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-base">{file.icon}</span>
+                        <span className="break-words">{file.filename}</span>
+                      </div>
+                    ))}
+                    {!isExpanded && parseFileList(currentContent).length > 3 && (
+                      <div className="text-xs text-muted-foreground">
+                        +{parseFileList(currentContent).length - 3}個のファイル...
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // 通常のテキスト表示
+                  <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{displayContent}</p>
+                )}
+              </div>
 
               <div className="flex-shrink-0 ml-2">
                 <Button
@@ -127,7 +195,7 @@ export function ClipboardItemList({
                   className="h-6 w-6 hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigator.clipboard.writeText(item.content);
+                    navigator.clipboard.writeText(currentContent);
                   }}
                   title="クリップボードにコピー"
                 >

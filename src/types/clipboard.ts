@@ -7,6 +7,10 @@ export interface ClipboardItem {
   is_favorite: boolean;
   source_app?: string;
   created_at: string; // ISO 8601 形式
+  available_formats?: string | string[]; // JSON文字列または配列
+  primary_format?: string;
+  data_size?: number;
+  format_contents?: string | Record<string, string>; // JSON文字列またはオブジェクト
 }
 
 // クリップボード統計の型定義

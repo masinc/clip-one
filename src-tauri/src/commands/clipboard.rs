@@ -1,6 +1,7 @@
 use crate::database::{ClipboardItem, Database};
 use clipboard_rs::{
     Clipboard, ClipboardContext, ClipboardHandler, ClipboardWatcher, ClipboardWatcherContext,
+    ContentFormat,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -48,11 +49,32 @@ impl ClipboardHandler for ClipboardManager {
             }
         };
 
-        let current_content = match ctx.get_text() {
-            Ok(content) => content,
+        // 利用可能な形式を検出
+        let available_formats = detect_clipboard_formats(&ctx);
+        println!("🔍 検出された形式: {:?}", available_formats);
+
+        // 全ての利用可能な形式を収集
+        let all_format_contents = collect_all_format_contents(&ctx);
+        
+        // 利用可能な形式のリストを作成
+        let available_formats: Vec<String> = all_format_contents.keys().cloned().collect();
+        
+        // 優先順位に従ってコンテンツを取得
+        let (current_content, detected_format) = match get_clipboard_content_by_priority(&ctx) {
+            Ok(content_info) => content_info,
             Err(e) => {
                 eprintln!("❌ クリップボード読み取りエラー: {}", e);
-                return;
+                // フォールバック: 基本テキスト取得を試行
+                match ctx.get_text() {
+                    Ok(text) => {
+                        println!("⚠️ フォールバック: テキストとして取得");
+                        (text, "text/plain".to_string())
+                    },
+                    Err(text_err) => {
+                        eprintln!("❌ フォールバック失敗: {}", text_err);
+                        return;
+                    }
+                }
             }
         };
 
@@ -61,16 +83,28 @@ impl ClipboardHandler for ClipboardManager {
             return;
         }
 
-        println!(
-            "📝 新しい内容: {}",
-            &current_content[..std::cmp::min(100, current_content.len())]
-        );
+        // UTF-8文字境界を考慮した安全なスライス
+        let preview = if current_content.len() <= 100 {
+            current_content.as_str()
+        } else {
+            // 100バイト以下で有効な文字境界を見つける
+            let mut boundary = 100;
+            while boundary > 0 && !current_content.is_char_boundary(boundary) {
+                boundary -= 1;
+            }
+            &current_content[..boundary]
+        };
+        
+        println!("📝 新しい内容: {}", preview);
         self.last_content = current_content.clone();
 
         // 非同期でデータベース処理を実行
         let app_clone = self.app.clone();
         let db_clone = Arc::clone(&self.db);
         let content_clone = current_content.clone();
+        let format_clone = detected_format.clone();
+        let formats_clone = available_formats.clone();
+        let contents_clone = all_format_contents.clone();
 
         // 新しいランタイムで非同期処理を実行
         std::thread::spawn(move || {
@@ -92,17 +126,15 @@ impl ClipboardHandler for ClipboardManager {
                     .any(|item| item.content == content_clone);
 
                 if !is_duplicate {
-                    // コンテンツタイプ判定
-                    let content_type = if content_clone.starts_with("http://")
-                        || content_clone.starts_with("https://")
-                    {
-                        "text/uri-list"
-                    } else {
-                        "text/plain"
-                    };
-
                     match db
-                        .save_clipboard_item(&content_clone, content_type, Some("clipboard-rs"))
+                        .save_clipboard_item_with_all_formats(
+                            &content_clone, 
+                            &format_clone, 
+                            Some("clipboard-rs"),
+                            &formats_clone,
+                            &format_clone,
+                            &contents_clone
+                        )
                         .await
                     {
                         Ok(saved_item) => {
@@ -349,4 +381,144 @@ pub async fn clear_clipboard_text() -> Result<(), String> {
 
     ctx.set_text("".to_string())
         .map_err(|e| format!("クリップボードクリアエラー: {}", e))
+}
+
+/// クリップボードで利用可能な形式を検出
+fn detect_clipboard_formats(ctx: &ClipboardContext) -> Vec<String> {
+    let mut formats = Vec::new();
+    
+    if ctx.has(ContentFormat::Text) {
+        formats.push("text/plain".to_string());
+    }
+    if ctx.has(ContentFormat::Html) {
+        formats.push("text/html".to_string());
+    }
+    if ctx.has(ContentFormat::Rtf) {
+        formats.push("text/rtf".to_string());
+    }
+    if ctx.has(ContentFormat::Image) {
+        formats.push("image/png".to_string());
+    }
+    if ctx.has(ContentFormat::Files) {
+        formats.push("application/x-file-list".to_string());
+    }
+    
+    formats
+}
+
+/// 全ての利用可能な形式のコンテンツを収集
+fn collect_all_format_contents(ctx: &ClipboardContext) -> std::collections::HashMap<String, String> {
+    let mut contents = std::collections::HashMap::new();
+    
+    // テキスト形式
+    if ctx.has(ContentFormat::Text) {
+        if let Ok(text) = ctx.get_text() {
+            let format = analyze_text_format(&text);
+            contents.insert(format, text);
+        }
+    }
+    
+    // ファイルリスト形式
+    if ctx.has(ContentFormat::Files) {
+        if let Ok(files) = ctx.get_files() {
+            let files_text = files.join("\n");
+            contents.insert("application/x-file-list".to_string(), files_text);
+        }
+    }
+    
+    // 画像形式
+    if ctx.has(ContentFormat::Image) {
+        if let Ok(_image_data) = ctx.get_image() {
+            let image_info = "[画像データ]".to_string();
+            contents.insert("image/png".to_string(), image_info);
+        }
+    }
+    
+    // RTF形式
+    if ctx.has(ContentFormat::Rtf) {
+        if let Ok(rtf) = ctx.get_rich_text() {
+            contents.insert("text/rtf".to_string(), rtf);
+        }
+    }
+    
+    // HTML形式
+    if ctx.has(ContentFormat::Html) {
+        if let Ok(html) = ctx.get_html() {
+            contents.insert("text/html".to_string(), html);
+        }
+    }
+    
+    contents
+}
+
+/// 優先順位に従ってクリップボードコンテンツを取得
+fn get_clipboard_content_by_priority(ctx: &ClipboardContext) -> Result<(String, String), String> {
+    // 優先順位: Text > Files > Image > RTF > HTML
+    // Textを最優先にすることで、URLなどが適切に判定される
+    
+    // 最優先: テキスト（URLやプレーンテキストを適切に処理）
+    if ctx.has(ContentFormat::Text) {
+        let text = ctx.get_text().map_err(|e| format!("テキスト取得エラー: {}", e))?;
+        // テキストの内容を詳細分析してより正確な形式判定
+        let format = analyze_text_format(&text);
+        return Ok((text, format));
+    }
+    
+    if ctx.has(ContentFormat::Files) {
+        match ctx.get_files() {
+            Ok(files) => {
+                let files_text = files.join("\n");
+                return Ok((files_text, "application/x-file-list".to_string()));
+            },
+            Err(e) => println!("ファイルリスト取得エラー: {}", e),
+        }
+    }
+    
+    if ctx.has(ContentFormat::Image) {
+        match ctx.get_image() {
+            Ok(_image_data) => {
+                // 画像データが検出されたことを示す
+                let image_info = "[画像データ]".to_string();
+                println!("📸 画像検出成功");
+                return Ok((image_info, "image/png".to_string()));
+            },
+            Err(e) => println!("画像取得エラー: {}", e),
+        }
+    }
+    
+    if ctx.has(ContentFormat::Rtf) {
+        match ctx.get_rich_text() {
+            Ok(rtf) => return Ok((rtf, "text/rtf".to_string())),
+            Err(e) => println!("RTF取得エラー: {}", e),
+        }
+    }
+    
+    // 最低優先度: HTML（現在パース機能なし）
+    if ctx.has(ContentFormat::Html) {
+        match ctx.get_html() {
+            Ok(html) => return Ok((html, "text/html".to_string())),
+            Err(e) => println!("HTML取得エラー: {}", e),
+        }
+    }
+    
+    Err("利用可能なクリップボード形式がありません".to_string())
+}
+
+/// テキストの内容を分析してより正確な形式を判定
+fn analyze_text_format(text: &str) -> String {
+    if text.starts_with("http://") || text.starts_with("https://") {
+        "text/uri-list".to_string()
+    } else if text.starts_with("data:image/") {
+        "image/png".to_string()
+    } else if text.starts_with("data:") {
+        "application/octet-stream".to_string()
+    } else if text.contains("<html") || text.contains("</html>") {
+        "text/html".to_string()
+    } else if text.starts_with("{\\rtf") {
+        "text/rtf".to_string()
+    } else if text.starts_with("/") || text.starts_with("C:\\") || text.contains("\\") {
+        "application/x-file-path".to_string()
+    } else {
+        "text/plain".to_string()
+    }
 }
