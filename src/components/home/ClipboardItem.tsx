@@ -5,6 +5,8 @@ import { FormatBadges } from "@/components/ui/format-badges";
 import type { DisplayClipboardItem } from "@/types/clipboardActions";
 import { formatRelativeTime } from "@/utils/dateUtils";
 import { getTypeIcon, getTypeName } from "@/utils/textUtils";
+import { useImageCopy } from "@/hooks/useImageCopy";
+import { useTextCopy } from "@/hooks/useTextCopy";
 import { ClipboardContentRenderer } from "./ClipboardContentRenderer";
 
 interface ClipboardItemProps {
@@ -28,6 +30,8 @@ export function ClipboardItem({
   onFormatChange,
   onContextMenu,
 }: ClipboardItemProps) {
+  const { copyImageToClipboard } = useImageCopy();
+  const { copyTextToClipboard } = useTextCopy();
   return (
     <Card
       key={item.id}
@@ -79,11 +83,21 @@ export function ClipboardItem({
             variant="ghost"
             size="icon"
             className="h-6 w-6 hover:bg-accent transition-opacity cursor-pointer"
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
-              navigator.clipboard.writeText(currentContent);
+              
+              // 画像データの場合は画像としてコピー、それ以外はテキストとしてコピー
+              if (currentFormat === "image/png" && currentContent.startsWith("data:image/")) {
+                await copyImageToClipboard(currentContent);
+              } else {
+                await copyTextToClipboard(currentContent);
+              }
             }}
-            title="クリップボードにコピー"
+            title={
+              currentFormat === "image/png" && currentContent.startsWith("data:image/")
+                ? "画像をクリップボードにコピー"
+                : "テキストをクリップボードにコピー"
+            }
           >
             <Copy className="h-3 w-3" />
           </Button>

@@ -12,6 +12,7 @@ use tokio::sync::Mutex;
 // グローバルな監視状態
 static MONITORING: AtomicBool = AtomicBool::new(false);
 
+
 // shutdown_channelをグローバルで保持
 use clipboard_rs::WatcherShutdown;
 use std::sync::Mutex as StdMutex;
@@ -40,6 +41,7 @@ impl ClipboardManager {
 impl ClipboardHandler for ClipboardManager {
     fn on_clipboard_change(&mut self) {
         println!("🎉 clipboard-rs: クリップボード変更検出!");
+
 
         // 新しい内容を取得 - ClipboardHandlerでは毎回新しいcontextを作る必要がある
         let ctx = match ClipboardContext::new() {
@@ -113,8 +115,8 @@ impl ClipboardHandler for ClipboardManager {
             rt.block_on(async move {
                 let db = db_clone.lock().await;
 
-                // 重複チェック
-                let recent_items = match db.get_history(Some(10), None).await {
+                // 重複チェック - より厳密に
+                let recent_items = match db.get_history(Some(5), None).await {
                     Ok(items) => items,
                     Err(e) => {
                         eprintln!("❌ 履歴取得エラー: {}", e);
@@ -122,12 +124,41 @@ impl ClipboardHandler for ClipboardManager {
                     }
                 };
 
-                // 正規化されたデータベースではコンテンツの重複チェック方法が異なる
+                // 直近5件の中に同一内容があるかチェック（コピーボタン対策）
                 let is_duplicate = recent_items.iter().any(|item| {
-                    item.contents
-                        .iter()
-                        .any(|content| content.content == content_clone)
+                    // プライマリコンテンツと同じかチェック
+                    if let Some(primary_content) = item.contents.iter()
+                        .find(|c| c.format == item.primary_format) {
+                        primary_content.content == content_clone
+                    } else {
+                        // プライマリが見つからない場合は任意のコンテンツと比較
+                        item.contents.iter().any(|content| content.content == content_clone)
+                    }
                 });
+
+                // さらに、直前のアイテムと完全に同一の場合は確実にスキップ
+                if let Some(latest_item) = recent_items.first() {
+                    if let Some(latest_content) = latest_item.contents.iter()
+                        .find(|c| c.format == latest_item.primary_format) {
+                        if latest_content.content == content_clone && 
+                           latest_item.primary_format == format_clone {
+                            // UTF-8文字境界を考慮した安全なスライス
+                            let preview = if content_clone.len() <= 50 {
+                                content_clone.as_str()
+                            } else {
+                                // 50バイト以下で有効な文字境界を見つける
+                                let mut boundary = 50;
+                                while boundary > 0 && !content_clone.is_char_boundary(boundary) {
+                                    boundary -= 1;
+                                }
+                                &content_clone[..boundary]
+                            };
+                            println!("🔄 直前と同一の内容・フォーマットのため重複スキップ: {}", preview);
+                            return;
+                        }
+                    }
+                }
+
 
                 if !is_duplicate {
                     match db
@@ -238,10 +269,20 @@ pub async fn start_clipboard_monitoring(
     // まず現在のクリップボード内容をテスト
     match ClipboardContext::new() {
         Ok(ctx) => match ctx.get_text() {
-            Ok(text) => println!(
-                "📋 現在のクリップボード内容: {}",
-                &text[..std::cmp::min(50, text.len())]
-            ),
+            Ok(text) => {
+                // UTF-8文字境界を考慮した安全なスライス
+                let preview = if text.len() <= 50 {
+                    text.as_str()
+                } else {
+                    // 50バイト以下で有効な文字境界を見つける
+                    let mut boundary = 50;
+                    while boundary > 0 && !text.is_char_boundary(boundary) {
+                        boundary -= 1;
+                    }
+                    &text[..boundary]
+                };
+                println!("📋 現在のクリップボード内容: {}", preview);
+            },
             Err(e) => println!("❌ クリップボード読み取りテストエラー: {}", e),
         },
         Err(e) => {
@@ -338,10 +379,18 @@ pub async fn test_clipboard_rs() -> Result<String, String> {
     let current_text = ctx
         .get_text()
         .map_err(|e| format!("クリップボード読み取り失敗: {}", e))?;
-    println!(
-        "✅ クリップボード読み取り成功: {}",
-        &current_text[..std::cmp::min(50, current_text.len())]
-    );
+    // UTF-8文字境界を考慮した安全なスライス
+    let preview = if current_text.len() <= 50 {
+        current_text.as_str()
+    } else {
+        // 50バイト以下で有効な文字境界を見つける
+        let mut boundary = 50;
+        while boundary > 0 && !current_text.is_char_boundary(boundary) {
+            boundary -= 1;
+        }
+        &current_text[..boundary]
+    };
+    println!("✅ クリップボード読み取り成功: {}", preview);
 
     // 3. ClipboardWatcherContext作成テスト
     let _watcher: ClipboardWatcherContext<ClipboardManager> = ClipboardWatcherContext::new()

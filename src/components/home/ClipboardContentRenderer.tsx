@@ -1,6 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { parseFileList, truncateText } from "@/utils/textUtils";
 import { useImageWindow } from "@/hooks/useImageWindow";
+import { useClipboardControl } from "@/hooks/useClipboardControl";
 
 interface ClipboardContentRendererProps {
   format: string;
@@ -14,6 +15,7 @@ export function ClipboardContentRenderer({
   isExpanded,
 }: ClipboardContentRendererProps) {
   const { showImageWindow } = useImageWindow();
+  const { notifyStartCopy } = useClipboardControl();
   
   const shouldTruncate = content.length > 100;
   const displayContent = isExpanded || !shouldTruncate ? content : truncateText(content);
@@ -27,6 +29,8 @@ export function ClipboardContentRenderer({
           className="text-blue-500 hover:text-blue-700 underline break-words cursor-pointer text-left w-full"
           onClick={async (e) => {
             e.stopPropagation();
+            // URL開く際の通知（URLがクリップボードにコピーされる可能性があるため）
+            await notifyStartCopy(content.trim(), "url-open");
             try {
               await openUrl(content.trim());
             } catch (error) {
