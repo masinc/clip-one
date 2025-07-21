@@ -1,12 +1,12 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{sqlite::SqlitePool, Row, migrate::Migrator};
+use sqlx::{migrate::Migrator, sqlite::SqlitePool, Row};
 use std::path::PathBuf;
 use uuid::Uuid;
 
 // SQLx標準マイグレーション
- static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
+static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
 
 /// 正規化されたクリップボードアイテムの構造体
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,15 +111,15 @@ impl Database {
                 return Err(anyhow::anyhow!("マイグレーション失敗: {}", e));
             }
         }
-        
+
         // テーブル作成確認
         let table_check: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='clipboard_items'"
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='clipboard_items'",
         )
         .fetch_one(&pool)
         .await?;
         println!("📈 clipboard_itemsテーブルの存在チェック: {}", table_check);
-        
+
         let db = Self { pool };
 
         Ok(db)
@@ -132,7 +132,6 @@ impl Database {
         let app_dir = current_dir.join("data");
         Ok(app_dir.join("clipone.db"))
     }
-
 
     /// 正規化されたデータベースでクリップボードアイテムとコンテンツを保存
     pub async fn save_clipboard_item_normalized(
@@ -155,7 +154,7 @@ impl Database {
         .bind(timestamp)
         .bind(false)
         .bind(source_app)
-        .bind(&created_at)
+        .bind(created_at)
         .execute(&self.pool)
         .await?;
 
@@ -164,13 +163,13 @@ impl Database {
             let data_size = content.len() as i64;
             sqlx::query(
                 "INSERT INTO clipboard_contents (item_id, format, content, data_size, created_at)
-                 VALUES (?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?, ?)",
             )
             .bind(&id)
             .bind(format)
             .bind(content)
             .bind(data_size)
-            .bind(&created_at)
+            .bind(created_at)
             .execute(&self.pool)
             .await?;
         }
@@ -202,13 +201,13 @@ impl Database {
         let mut result = Vec::new();
         for item_row in items {
             let item_id: String = item_row.get("id");
-            
+
             // コンテンツを取得
             let contents = sqlx::query(
                 "SELECT item_id, format, content, data_size, created_at
                  FROM clipboard_contents
                  WHERE item_id = ?
-                 ORDER BY format"
+                 ORDER BY format",
             )
             .bind(&item_id)
             .fetch_all(&self.pool)
@@ -244,16 +243,20 @@ impl Database {
         offset: Option<u32>,
     ) -> Result<Vec<DisplayClipboardItem>> {
         let items = self.get_history(limit, offset).await?;
-        
+
         let mut result = Vec::new();
         for item in items {
-            let available_formats: Vec<String> = item.contents.iter().map(|c| c.format.clone()).collect();
-            let format_contents: std::collections::HashMap<String, String> = item.contents.iter()
+            let available_formats: Vec<String> =
+                item.contents.iter().map(|c| c.format.clone()).collect();
+            let format_contents: std::collections::HashMap<String, String> = item
+                .contents
+                .iter()
                 .map(|c| (c.format.clone(), c.content.clone()))
                 .collect();
-            
+
             // プライマリコンテンツを取得
-            let primary_content = format_contents.get(&item.primary_format)
+            let primary_content = format_contents
+                .get(&item.primary_format)
                 .cloned()
                 .unwrap_or_else(|| "[No content]".to_string());
 
@@ -287,7 +290,7 @@ impl Database {
              JOIN clipboard_items ci ON cs.item_id = ci.id
              WHERE clipboard_search MATCH ?
              ORDER BY ci.timestamp DESC
-             LIMIT ?"
+             LIMIT ?",
         )
         .bind(query)
         .bind(limit)
@@ -309,7 +312,7 @@ impl Database {
         let item_row = sqlx::query(
             "SELECT id, primary_format, timestamp, is_favorite, source_app, created_at
              FROM clipboard_items
-             WHERE id = ?"
+             WHERE id = ?",
         )
         .bind(id)
         .fetch_one(&self.pool)
@@ -319,7 +322,7 @@ impl Database {
             "SELECT item_id, format, content, data_size, created_at
              FROM clipboard_contents
              WHERE item_id = ?
-             ORDER BY format"
+             ORDER BY format",
         )
         .bind(id)
         .fetch_all(&self.pool)
@@ -427,16 +430,17 @@ impl Database {
         // 単一形式のコンテンツを正規化されたメソッドで保存
         let mut format_contents = std::collections::HashMap::new();
         format_contents.insert(content_type.to_string(), content.to_string());
-        
-        let item = self.save_clipboard_item_normalized(
-            content_type,
-            source_app,
-            &format_contents
-        ).await?;
-        
+
+        let item = self
+            .save_clipboard_item_normalized(content_type, source_app, &format_contents)
+            .await?;
+
         // DisplayClipboardItemに変換して返す
-        let available_formats: Vec<String> = item.contents.iter().map(|c| c.format.clone()).collect();
-        let format_contents_map: std::collections::HashMap<String, String> = item.contents.iter()
+        let available_formats: Vec<String> =
+            item.contents.iter().map(|c| c.format.clone()).collect();
+        let format_contents_map: std::collections::HashMap<String, String> = item
+            .contents
+            .iter()
             .map(|c| (c.format.clone(), c.content.clone()))
             .collect();
 
@@ -452,7 +456,7 @@ impl Database {
             format_contents: Some(format_contents_map),
         })
     }
-    
+
     /// 後方互換性のための旧形式インターフェース（複数コンテンツ）
     pub async fn save_clipboard_item_with_all_formats(
         &self,
@@ -463,22 +467,23 @@ impl Database {
         primary_format: &str,
         format_contents: &std::collections::HashMap<String, String>,
     ) -> Result<DisplayClipboardItem> {
-        let item = self.save_clipboard_item_normalized(
-            primary_format,
-            source_app,
-            format_contents
-        ).await?;
-        
+        let item = self
+            .save_clipboard_item_normalized(primary_format, source_app, format_contents)
+            .await?;
+
         // DisplayClipboardItemに変換して返す
-        let available_formats_vec: Vec<String> = item.contents.iter().map(|c| c.format.clone()).collect();
-        let format_contents_map: std::collections::HashMap<String, String> = item.contents.iter()
+        let available_formats_vec: Vec<String> =
+            item.contents.iter().map(|c| c.format.clone()).collect();
+        let format_contents_map: std::collections::HashMap<String, String> = item
+            .contents
+            .iter()
             .map(|c| (c.format.clone(), c.content.clone()))
             .collect();
 
         Ok(DisplayClipboardItem {
             id: item.id,
             content: content.to_string(),
-            content_type: content_type.to_string(), 
+            content_type: content_type.to_string(),
             timestamp: item.timestamp,
             is_favorite: item.is_favorite,
             source_app: item.source_app,

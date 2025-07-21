@@ -1,8 +1,8 @@
 use crate::database::{Database, DisplayClipboardItem};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use clipboard_rs::{
-    Clipboard, ClipboardContext, ClipboardHandler, ClipboardWatcher, ClipboardWatcherContext,
-    ContentFormat, common::RustImage,
+    common::RustImage, Clipboard, ClipboardContext, ClipboardHandler, ClipboardWatcher,
+    ClipboardWatcherContext, ContentFormat,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -56,10 +56,10 @@ impl ClipboardHandler for ClipboardManager {
 
         // 全ての利用可能な形式を収集
         let all_format_contents = collect_all_format_contents(&ctx);
-        
+
         // 利用可能な形式のリストを作成
         let available_formats: Vec<String> = all_format_contents.keys().cloned().collect();
-        
+
         // 優先順位に従ってコンテンツを取得
         let (current_content, detected_format) = match get_clipboard_content_by_priority(&ctx) {
             Ok(content_info) => content_info,
@@ -70,7 +70,7 @@ impl ClipboardHandler for ClipboardManager {
                     Ok(text) => {
                         println!("⚠️ フォールバック: テキストとして取得");
                         (text, "text/plain".to_string())
-                    },
+                    }
                     Err(text_err) => {
                         eprintln!("❌ フォールバック失敗: {}", text_err);
                         return;
@@ -95,7 +95,7 @@ impl ClipboardHandler for ClipboardManager {
             }
             &current_content[..boundary]
         };
-        
+
         println!("📝 新しい内容: {}", preview);
         self.last_content = current_content.clone();
 
@@ -123,11 +123,11 @@ impl ClipboardHandler for ClipboardManager {
                 };
 
                 // 正規化されたデータベースではコンテンツの重複チェック方法が異なる
-                let is_duplicate = recent_items
-                    .iter()
-                    .any(|item| {
-                        item.contents.iter().any(|content| content.content == content_clone)
-                    });
+                let is_duplicate = recent_items.iter().any(|item| {
+                    item.contents
+                        .iter()
+                        .any(|content| content.content == content_clone)
+                });
 
                 if !is_duplicate {
                     match db
@@ -137,7 +137,7 @@ impl ClipboardHandler for ClipboardManager {
                             Some("clipboard-rs"),
                             &formats_clone,
                             &format_clone,
-                            &contents_clone
+                            &contents_clone,
                         )
                         .await
                     {
@@ -215,7 +215,9 @@ pub async fn check_duplicate_content(
 
     // 正規化されたデータベースでの重複チェック
     let is_duplicate = recent_items.iter().any(|item| {
-        item.contents.iter().any(|content_item| content_item.content == content)
+        item.contents
+            .iter()
+            .any(|content_item| content_item.content == content)
     });
     Ok(is_duplicate)
 }
@@ -393,7 +395,7 @@ pub async fn clear_clipboard_text() -> Result<(), String> {
 /// クリップボードで利用可能な形式を検出
 fn detect_clipboard_formats(ctx: &ClipboardContext) -> Vec<String> {
     let mut formats = Vec::new();
-    
+
     if ctx.has(ContentFormat::Text) {
         formats.push("text/plain".to_string());
     }
@@ -409,14 +411,16 @@ fn detect_clipboard_formats(ctx: &ClipboardContext) -> Vec<String> {
     if ctx.has(ContentFormat::Files) {
         formats.push("application/x-file-list".to_string());
     }
-    
+
     formats
 }
 
 /// 全ての利用可能な形式のコンテンツを収集
-fn collect_all_format_contents(ctx: &ClipboardContext) -> std::collections::HashMap<String, String> {
+fn collect_all_format_contents(
+    ctx: &ClipboardContext,
+) -> std::collections::HashMap<String, String> {
     let mut contents = std::collections::HashMap::new();
-    
+
     // テキスト形式
     if ctx.has(ContentFormat::Text) {
         if let Ok(text) = ctx.get_text() {
@@ -424,7 +428,7 @@ fn collect_all_format_contents(ctx: &ClipboardContext) -> std::collections::Hash
             contents.insert(format, text);
         }
     }
-    
+
     // ファイルリスト形式
     if ctx.has(ContentFormat::Files) {
         if let Ok(files) = ctx.get_files() {
@@ -432,13 +436,13 @@ fn collect_all_format_contents(ctx: &ClipboardContext) -> std::collections::Hash
             contents.insert("application/x-file-list".to_string(), files_text);
         }
     }
-    
+
     // 画像形式
     if ctx.has(ContentFormat::Image) {
         if let Ok(image_data) = ctx.get_image() {
             // RustImageDataの利用可能なメソッドを試してみる
             println!("📸 画像データ取得成功");
-            
+
             // 画像をファイルに一時保存して読み込む方法を試す
             let temp_path = std::env::temp_dir().join("clipboard_debug.png");
             match image_data.save_to_path(&temp_path.to_string_lossy()) {
@@ -449,8 +453,15 @@ fn collect_all_format_contents(ctx: &ClipboardContext) -> std::collections::Hash
                             // 画像サイズ制限（5MB）
                             const MAX_IMAGE_SIZE: usize = 5 * 1024 * 1024;
                             if bytes.len() > MAX_IMAGE_SIZE {
-                                println!("📸 画像サイズが大きすぎます: {}バイト (上限: {}MB)", bytes.len(), MAX_IMAGE_SIZE / 1024 / 1024);
-                                let size_info = format!("[画像データ: {}KB - サイズ制限により表示不可]", bytes.len() / 1024);
+                                println!(
+                                    "📸 画像サイズが大きすぎます: {}バイト (上限: {}MB)",
+                                    bytes.len(),
+                                    MAX_IMAGE_SIZE / 1024 / 1024
+                                );
+                                let size_info = format!(
+                                    "[画像データ: {}KB - サイズ制限により表示不可]",
+                                    bytes.len() / 1024
+                                );
                                 contents.insert("image/png".to_string(), size_info);
                             } else {
                                 let base64_data = BASE64.encode(&bytes);
@@ -458,10 +469,10 @@ fn collect_all_format_contents(ctx: &ClipboardContext) -> std::collections::Hash
                                 contents.insert("image/png".to_string(), data_url);
                                 println!("📸 画像データ保存成功: {}KB", bytes.len() / 1024);
                             }
-                            
+
                             // 一時ファイル削除
                             let _ = std::fs::remove_file(&temp_path);
-                        },
+                        }
                         Err(e) => {
                             println!("ファイル読み込みエラー: {}", e);
                             // Windows特有のエラーでもプレースホルダー保存
@@ -469,9 +480,12 @@ fn collect_all_format_contents(ctx: &ClipboardContext) -> std::collections::Hash
                             contents.insert("image/png".to_string(), error_info);
                         }
                     }
-                },
+                }
                 Err(e) => {
-                    println!("画像保存エラー: {} (Windows OSError(0)は正常終了の場合があります)", e);
+                    println!(
+                        "画像保存エラー: {} (Windows OSError(0)は正常終了の場合があります)",
+                        e
+                    );
                     // Windows特有のOSError(0)の場合でもプレースホルダー保存
                     if e.to_string().contains("OSError(0)") {
                         let placeholder = "[画像データ: Windows取得エラー]".to_string();
@@ -480,25 +494,25 @@ fn collect_all_format_contents(ctx: &ClipboardContext) -> std::collections::Hash
                         let error_info = format!("[画像データ: 保存エラー - {}]", e);
                         contents.insert("image/png".to_string(), error_info);
                     }
-                },
+                }
             }
         }
     }
-    
+
     // RTF形式
     if ctx.has(ContentFormat::Rtf) {
         if let Ok(rtf) = ctx.get_rich_text() {
             contents.insert("text/rtf".to_string(), rtf);
         }
     }
-    
+
     // HTML形式
     if ctx.has(ContentFormat::Html) {
         if let Ok(html) = ctx.get_html() {
             contents.insert("text/html".to_string(), html);
         }
     }
-    
+
     contents
 }
 
@@ -506,31 +520,33 @@ fn collect_all_format_contents(ctx: &ClipboardContext) -> std::collections::Hash
 fn get_clipboard_content_by_priority(ctx: &ClipboardContext) -> Result<(String, String), String> {
     // 優先順位: Text > Files > Image > RTF > HTML
     // Textを最優先にすることで、URLなどが適切に判定される
-    
+
     // 最優先: テキスト（URLやプレーンテキストを適切に処理）
     if ctx.has(ContentFormat::Text) {
-        let text = ctx.get_text().map_err(|e| format!("テキスト取得エラー: {}", e))?;
+        let text = ctx
+            .get_text()
+            .map_err(|e| format!("テキスト取得エラー: {}", e))?;
         // テキストの内容を詳細分析してより正確な形式判定
         let format = analyze_text_format(&text);
         return Ok((text, format));
     }
-    
+
     if ctx.has(ContentFormat::Files) {
         match ctx.get_files() {
             Ok(files) => {
                 let files_text = files.join("\n");
                 return Ok((files_text, "application/x-file-list".to_string()));
-            },
+            }
             Err(e) => println!("ファイルリスト取得エラー: {}", e),
         }
     }
-    
+
     if ctx.has(ContentFormat::Image) {
         match ctx.get_image() {
             Ok(image_data) => {
                 // RustImageDataの利用可能なメソッドを試してみる
                 println!("📸 画像データ取得成功");
-                
+
                 // 画像をファイルに一時保存して読み込む方法を試す
                 let temp_path = std::env::temp_dir().join("clipboard_priority_debug.png");
                 match image_data.save_to_path(&temp_path.to_string_lossy()) {
@@ -541,56 +557,75 @@ fn get_clipboard_content_by_priority(ctx: &ClipboardContext) -> Result<(String, 
                                 // 画像サイズ制限（5MB）
                                 const MAX_IMAGE_SIZE: usize = 5 * 1024 * 1024;
                                 if bytes.len() > MAX_IMAGE_SIZE {
-                                    println!("📸 画像サイズが大きすぎます: {}バイト (上限: {}MB)", bytes.len(), MAX_IMAGE_SIZE / 1024 / 1024);
-                                    let size_info = format!("[画像データ: {}KB - サイズ制限により表示不可]", bytes.len() / 1024);
-                                    
+                                    println!(
+                                        "📸 画像サイズが大きすぎます: {}バイト (上限: {}MB)",
+                                        bytes.len(),
+                                        MAX_IMAGE_SIZE / 1024 / 1024
+                                    );
+                                    let size_info = format!(
+                                        "[画像データ: {}KB - サイズ制限により表示不可]",
+                                        bytes.len() / 1024
+                                    );
+
                                     // 一時ファイル削除
                                     let _ = std::fs::remove_file(&temp_path);
-                                    
+
                                     return Ok((size_info, "image/png".to_string()));
                                 } else {
                                     let base64_data = BASE64.encode(&bytes);
                                     let data_url = format!("data:image/png;base64,{}", base64_data);
                                     println!("📸 画像データ変換成功: {}KB", bytes.len() / 1024);
-                                    
+
                                     // 一時ファイル削除
                                     let _ = std::fs::remove_file(&temp_path);
-                                    
+
                                     return Ok((data_url, "image/png".to_string()));
                                 }
-                            },
+                            }
                             Err(e) => {
                                 println!("ファイル読み込みエラー: {}", e);
-                                return Ok(("[画像データ: 読み込みエラー]".to_string(), "image/png".to_string()));
-                            },
+                                return Ok((
+                                    "[画像データ: 読み込みエラー]".to_string(),
+                                    "image/png".to_string(),
+                                ));
+                            }
                         }
-                    },
+                    }
                     Err(e) => {
                         println!("画像保存エラー: {}", e);
-                        return Ok(("[画像データ: 保存エラー]".to_string(), "image/png".to_string()));
-                    },
+                        return Ok((
+                            "[画像データ: 保存エラー]".to_string(),
+                            "image/png".to_string(),
+                        ));
+                    }
                 }
-            },
+            }
             Err(e) => {
-                println!("画像取得エラー: {} (Windows OSError(0)は正常終了の場合があります)", e);
+                println!(
+                    "画像取得エラー: {} (Windows OSError(0)は正常終了の場合があります)",
+                    e
+                );
                 // Windows特有のOSError(0)の場合、画像が実際に存在する可能性があるため
                 // プレースホルダーとして画像形式で保存
                 if e.to_string().contains("OSError(0)") {
                     println!("📸 Windows OSError(0) - 画像データは存在する可能性があります");
                     println!("💡 clipboard-rsの制限: 将来的にarboardライブラリへの移行を検討");
-                    return Ok(("[画像データ: Windows取得エラー - arboard移行検討中]".to_string(), "image/png".to_string()));
+                    return Ok((
+                        "[画像データ: Windows取得エラー - arboard移行検討中]".to_string(),
+                        "image/png".to_string(),
+                    ));
                 }
-            },
+            }
         }
     }
-    
+
     if ctx.has(ContentFormat::Rtf) {
         match ctx.get_rich_text() {
             Ok(rtf) => return Ok((rtf, "text/rtf".to_string())),
             Err(e) => println!("RTF取得エラー: {}", e),
         }
     }
-    
+
     // 最低優先度: HTML（現在パース機能なし）
     if ctx.has(ContentFormat::Html) {
         match ctx.get_html() {
@@ -598,7 +633,7 @@ fn get_clipboard_content_by_priority(ctx: &ClipboardContext) -> Result<(String, 
             Err(e) => println!("HTML取得エラー: {}", e),
         }
     }
-    
+
     Err("利用可能なクリップボード形式がありません".to_string())
 }
 

@@ -39,17 +39,23 @@ pub async fn search_clipboard_history(
 ) -> Result<Vec<DisplayClipboardItem>, String> {
     let db = db_state.lock().await;
     // 正規化された検索結果をDisplayClipboardItemに変換
-    let search_results = db.search_history(&query, limit).await
+    let search_results = db
+        .search_history(&query, limit)
+        .await
         .map_err(|e| format!("履歴検索エラー: {}", e))?;
-    
+
     let mut display_results = Vec::new();
     for item in search_results {
-        let available_formats: Vec<String> = item.contents.iter().map(|c| c.format.clone()).collect();
-        let format_contents: std::collections::HashMap<String, String> = item.contents.iter()
+        let available_formats: Vec<String> =
+            item.contents.iter().map(|c| c.format.clone()).collect();
+        let format_contents: std::collections::HashMap<String, String> = item
+            .contents
+            .iter()
             .map(|c| (c.format.clone(), c.content.clone()))
             .collect();
-        
-        let primary_content = format_contents.get(&item.primary_format)
+
+        let primary_content = format_contents
+            .get(&item.primary_format)
             .cloned()
             .unwrap_or_else(|| "[No content]".to_string());
 
@@ -65,7 +71,7 @@ pub async fn search_clipboard_history(
             format_contents: Some(format_contents),
         });
     }
-    
+
     Ok(display_results)
 }
 
