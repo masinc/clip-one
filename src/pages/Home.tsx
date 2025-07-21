@@ -78,6 +78,8 @@ export default function Home() {
 
     // 直接clipboard-updatedイベントをリッスンして履歴リストを即座に更新
     let unlistenClipboardUpdated: (() => void) | null = null;
+    let unlistenTrayEvents: (() => void) | null = null;
+    let unlistenNavigationEvents: (() => void) | null = null;
 
     const setupDirectEventListener = async () => {
       try {
@@ -107,6 +109,30 @@ export default function Home() {
 
     setupDirectEventListener();
 
+    // トレイイベントリスナーを設定（現在は使用していない）
+    const setupTrayEventListener = async () => {
+      // 将来の拡張用に保持
+      console.log("✅ トレイイベントリスナー準備完了");
+    };
+
+    setupTrayEventListener();
+
+    // トレイナビゲーションイベントリスナーを設定
+    const setupNavigationEventListener = async () => {
+      try {
+        unlistenNavigationEvents = await listen("tray-navigate-settings", () => {
+          console.log("⚙️ トレイから設定画面遷移要求を受信");
+          navigate("/settings");
+        });
+        
+        console.log("✅ ナビゲーションイベントリスナー設定完了");
+      } catch (err) {
+        console.error("❌ ナビゲーションイベントリスナー設定エラー:", err);
+      }
+    };
+
+    setupNavigationEventListener();
+
     // クリップボード監視開始（遅延）
     const timer = setTimeout(() => {
       console.log("🚀 クリップボード監視開始処理開始...");
@@ -134,6 +160,12 @@ export default function Home() {
       clearTimeout(timer);
       if (unlistenClipboardUpdated) {
         unlistenClipboardUpdated();
+      }
+      if (unlistenTrayEvents) {
+        unlistenTrayEvents();
+      }
+      if (unlistenNavigationEvents) {
+        unlistenNavigationEvents();
       }
       console.log("Home コンポーネントクリーンアップ");
       clipboard.stopMonitoring().catch(console.error);
