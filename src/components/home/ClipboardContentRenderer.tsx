@@ -20,8 +20,7 @@ export function ClipboardContentRenderer({ format, content, isExpanded }: Clipbo
   if (format === "text/uri-list") {
     return (
       <div className="text-sm">
-        <button
-          type="button"
+        <div
           className="text-blue-500 hover:text-blue-700 underline break-words cursor-pointer text-left w-full"
           onClick={async (e) => {
             e.stopPropagation();
@@ -33,10 +32,18 @@ export function ClipboardContentRenderer({ format, content, isExpanded }: Clipbo
               console.error("URL開く失敗:", error);
             }
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.currentTarget.click();
+            }
+          }}
+          role="button"
+          tabIndex={0}
           title={`${content} を外部ブラウザで開く`}
         >
           {displayContent}
-        </button>
+        </div>
       </div>
     );
   }

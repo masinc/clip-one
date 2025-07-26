@@ -43,24 +43,29 @@ export function ClipboardItem({
           <span className="text-xs">{getTypeIcon(currentFormat)}</span>
         </div>
 
-        <button
-          type="button"
-          className="min-w-0 cursor-default text-left bg-transparent border-none p-0 w-full"
-          onClick={() => onItemClick(item.id)}
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <Hash className="h-3 w-3 text-muted-foreground" />
-            <span className="text-xs font-mono text-muted-foreground">{index + 1}</span>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              {formatRelativeTime(item.timestamp)}
+        <div className="min-w-0 w-full space-y-2">
+          <button
+            type="button"
+            className="min-w-0 cursor-default text-left bg-transparent border-none p-0 w-full"
+            onClick={() => onItemClick(item.id)}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Hash className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-mono text-muted-foreground">{index + 1}</span>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {formatRelativeTime(item.timestamp)}
+              </div>
+              <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+                {getTypeName(currentFormat)}
+              </span>
             </div>
-            <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
-              {getTypeName(currentFormat)}
-            </span>
-          </div>
 
-          {/* 複数形式バッジ */}
+            {/* コンテンツ表示 - 形式別の特殊表示 */}
+            <ClipboardContentRenderer format={currentFormat} content={currentContent} isExpanded={isExpanded} />
+          </button>
+
+          {/* 複数形式バッジ - ボタン外に移動 */}
           {item.available_formats && (
             <FormatBadges
               availableFormats={item.available_formats}
@@ -69,10 +74,7 @@ export function ClipboardItem({
               mainFormat={item.content_type}
             />
           )}
-
-          {/* コンテンツ表示 - 形式別の特殊表示 */}
-          <ClipboardContentRenderer format={currentFormat} content={currentContent} isExpanded={isExpanded} />
-        </button>
+        </div>
 
         <div className="ml-2">
           <Button
