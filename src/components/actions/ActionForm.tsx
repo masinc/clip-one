@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { GlobalAction } from "@/contexts/ActionsContext";
+import type { ContentCategory } from "@/utils/contentTypeMapper";
 import { getIconComponent, iconMap } from "@/utils/iconMapping";
 
 interface ActionFormProps {
@@ -137,17 +138,19 @@ export function ActionForm({ action, isCreating, contentTypes, onSave, onCancel 
               <div key={contentType.value} className="flex items-center space-x-2">
                 <Checkbox
                   id={contentType.value}
-                  checked={formData.allowedContentTypes.includes(contentType.value)}
+                  checked={formData.allowedContentTypes.includes(contentType.value as ContentCategory)}
                   onCheckedChange={(checked) => {
                     if (checked) {
                       setFormData({
                         ...formData,
-                        allowedContentTypes: [...formData.allowedContentTypes, contentType.value],
+                        allowedContentTypes: [...formData.allowedContentTypes, contentType.value as ContentCategory],
                       });
                     } else {
                       setFormData({
                         ...formData,
-                        allowedContentTypes: formData.allowedContentTypes.filter((t) => t !== contentType.value),
+                        allowedContentTypes: formData.allowedContentTypes.filter(
+                          (t) => t !== (contentType.value as ContentCategory),
+                        ),
                       });
                     }
                   }}
