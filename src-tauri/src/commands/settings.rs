@@ -3,10 +3,22 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// アプリケーション設定の構造体
+/// アプリケーション情報の構造体
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppInfo {
+    pub name: String,           // アプリ名
+    pub version: String,        // バージョン（Cargo.tomlから）
+    pub description: String,    // アプリ説明
+    pub author: String,         // 作者
+    pub license: Option<String>, // ライセンス
+    pub repository: Option<String>, // リポジトリURL
+    pub homepage: Option<String>,   // ホームページ
+    pub build_date: String,     // ビルド日時
+}
+
+/// アプリケーション設定の構造体（versionフィールドを削除）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
-    pub version: String,
     pub auto_start: bool,
     pub max_history_items: u32,
     pub hotkeys: HashMap<String, String>,
@@ -43,7 +55,6 @@ impl Default for AppSettings {
         hotkeys.insert("clear_clipboard".to_string(), "Ctrl+Shift+C".to_string());
 
         Self {
-            version: "1.0.0".to_string(),
             auto_start: true,
             max_history_items: 1000,
             hotkeys,
@@ -174,4 +185,37 @@ pub async fn reset_settings() -> Result<AppSettings, String> {
         .map_err(|e| format!("設定リセットエラー: {}", e))?;
 
     Ok(default_settings)
+}
+
+/// アプリケーション情報を取得
+#[tauri::command]
+pub async fn get_app_info() -> Result<AppInfo, String> {
+    // Cargo.tomlから情報を取得
+    let name = env!("CARGO_PKG_NAME").to_string();
+    let version = env!("CARGO_PKG_VERSION").to_string();
+    let description = env!("CARGO_PKG_DESCRIPTION").to_string();
+    let authors = env!("CARGO_PKG_AUTHORS").to_string();
+    
+    // ライセンス情報（Cargo.tomlから取得、なければNone）
+    let license = option_env!("CARGO_PKG_LICENSE").map(|s| s.to_string());
+    
+    // リポジトリ情報（Cargo.tomlから取得、なければNone）
+    let repository = option_env!("CARGO_PKG_REPOSITORY").map(|s| s.to_string());
+    
+    // ホームページ情報（Cargo.tomlから取得、なければNone）
+    let homepage = option_env!("CARGO_PKG_HOMEPAGE").map(|s| s.to_string());
+    
+    // ビルド日時（コンパイル時の日付を生成）
+    let build_date = chrono::Utc::now().format("%Y.%m.%d").to_string();
+    
+    Ok(AppInfo {
+        name,
+        version,
+        description,
+        author: authors,
+        license,
+        repository,
+        homepage,
+        build_date,
+    })
 }

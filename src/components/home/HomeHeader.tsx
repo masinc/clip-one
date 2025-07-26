@@ -56,7 +56,7 @@ export function HomeHeader({ searchQuery, onSearchChange, onHistoryReload }: Hom
                   履歴をクリア
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/about")}>
                   <Info className="h-4 w-4" />
                   ClipOne について
                 </DropdownMenuItem>

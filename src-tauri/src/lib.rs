@@ -18,10 +18,11 @@ fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
     let show_hide = MenuItem::with_id(app, "toggle_window", "履歴の表示/非表示", true, None::<&str>)?;
     let separator1 = PredefinedMenuItem::separator(app)?;
     let settings = MenuItem::with_id(app, "settings", "設定", true, None::<&str>)?;
+    let about = MenuItem::with_id(app, "about", "ClipOne について", true, None::<&str>)?;
     let separator2 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItem::with_id(app, "quit", "終了", true, None::<&str>)?;
     
-    let menu = Menu::with_items(app, &[&show_hide, &separator1, &settings, &separator2, &quit])?;
+    let menu = Menu::with_items(app, &[&show_hide, &separator1, &settings, &about, &separator2, &quit])?;
     
     // トレイアイコンを作成（既存の32x32アイコンを使用）
     let icon_bytes = include_bytes!("../icons/32x32.png");
@@ -36,30 +37,27 @@ fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
         .icon(icon)
         .tooltip("ClipOne - クリップボード履歴管理\n左クリック: 表示切り替え\n右クリック: メニュー")
         .on_tray_icon_event(|tray, event| {
-            match event {
-                TrayIconEvent::Click { button: MouseButton::Left, button_state, .. } => {
-                    // Down状態のクリックのみ処理（Up状態は無視）
-                    if button_state != MouseButtonState::Down {
-                        return;
-                    }
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state, .. } = event {
+                // Down状態のクリックのみ処理（Up状態は無視）
+                if button_state != MouseButtonState::Down {
+                    return;
+                }
+                
+                
+                // 左クリック：ウィンドウの表示/非表示切り替え
+                if let Some(window) = tray.app_handle().get_webview_window("main") {
+                    // 状態をatomicフラグで管理してパフォーマンス向上
+                    let should_show = !WINDOW_SHOULD_BE_VISIBLE.load(Ordering::Relaxed);
                     
-                    
-                    // 左クリック：ウィンドウの表示/非表示切り替え
-                    if let Some(window) = tray.app_handle().get_webview_window("main") {
-                        // 状態をatomicフラグで管理してパフォーマンス向上
-                        let should_show = !WINDOW_SHOULD_BE_VISIBLE.load(Ordering::Relaxed);
-                        
-                        if should_show {
-                            WINDOW_SHOULD_BE_VISIBLE.store(true, Ordering::Relaxed);
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        } else {
-                            WINDOW_SHOULD_BE_VISIBLE.store(false, Ordering::Relaxed);
-                            let _ = window.hide();
-                        }
+                    if should_show {
+                        WINDOW_SHOULD_BE_VISIBLE.store(true, Ordering::Relaxed);
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    } else {
+                        WINDOW_SHOULD_BE_VISIBLE.store(false, Ordering::Relaxed);
+                        let _ = window.hide();
                     }
                 }
-                _ => {}
             }
         })
         .on_menu_event(|app, event| {
@@ -87,6 +85,17 @@ fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
                         let _ = window.emit("tray-navigate-settings", ());
                     }
                 }
+                "about" => {
+                    // アバウト画面を表示
+                    if let Some(window) = app.get_webview_window("main") {
+                        // まずウィンドウを表示
+                        WINDOW_SHOULD_BE_VISIBLE.store(true, Ordering::Relaxed);
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                        // アバウトページに遷移するイベントを送信
+                        let _ = window.emit("tray-navigate-about", ());
+                    }
+                }
                 "quit" => {
                     println!("✋ アプリケーションを終了します");
                     app.exit(0);
@@ -104,34 +113,31 @@ fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
 fn setup_window_events(app: &tauri::App) {
     if let Some(window) = app.get_webview_window("main") {
         let app_handle = app.handle().clone();
-        let _ = window.on_window_event(move |event| {
-            match event {
-                WindowEvent::CloseRequested { api, .. } => {
-                    // ウィンドウクローズ時は隠すだけ（終了しない）
-                    // ただし、トレイから意図的に表示された直後の場合は隠さない
-                    let should_be_visible = WINDOW_SHOULD_BE_VISIBLE.load(Ordering::Relaxed);
-                    
-                    println!("🚪 CloseRequested イベント受信, should_be_visible = {}", should_be_visible);
-                    
-                    if should_be_visible {
-                        // 意図的に表示された状態なので、クローズ処理をスキップ
-                        println!("🔼 ウィンドウが意図的に表示されているため、クローズ処理をスキップ");
-                        // 少し待ってからフラグをリセット（初期化後の自動クローズを防ぐ）
-                        std::thread::spawn(|| {
-                            std::thread::sleep(std::time::Duration::from_millis(1000));
-                            WINDOW_SHOULD_BE_VISIBLE.store(false, Ordering::Relaxed);
-                            println!("⏰ WINDOW_SHOULD_BE_VISIBLE フラグをリセット");
-                        });
-                    } else {
-                        // 通常のクローズ処理：トレイに隠す
-                        api.prevent_close();
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.hide();
-                            println!("🔽 ウィンドウをトレイに最小化しました");
-                        }
+        window.on_window_event(move |event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                // ウィンドウクローズ時は隠すだけ（終了しない）
+                // ただし、トレイから意図的に表示された直後の場合は隠さない
+                let should_be_visible = WINDOW_SHOULD_BE_VISIBLE.load(Ordering::Relaxed);
+                
+                println!("🚪 CloseRequested イベント受信, should_be_visible = {}", should_be_visible);
+                
+                if should_be_visible {
+                    // 意図的に表示された状態なので、クローズ処理をスキップ
+                    println!("🔼 ウィンドウが意図的に表示されているため、クローズ処理をスキップ");
+                    // 少し待ってからフラグをリセット（初期化後の自動クローズを防ぐ）
+                    std::thread::spawn(|| {
+                        std::thread::sleep(std::time::Duration::from_millis(1000));
+                        WINDOW_SHOULD_BE_VISIBLE.store(false, Ordering::Relaxed);
+                        println!("⏰ WINDOW_SHOULD_BE_VISIBLE フラグをリセット");
+                    });
+                } else {
+                    // 通常のクローズ処理：トレイに隠す
+                    api.prevent_close();
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        let _ = window.hide();
+                        println!("🔽 ウィンドウをトレイに最小化しました");
                     }
                 }
-                _ => {}
             }
         });
     }
@@ -198,6 +204,8 @@ pub fn run() {
             save_app_settings,
             update_setting,
             reset_settings,
+            // アプリ情報
+            get_app_info,
             // エクスポート/インポート
             export_clipboard_history_json,
             export_clipboard_history_csv,

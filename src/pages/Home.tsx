@@ -78,7 +78,6 @@ export default function Home() {
 
     // 直接clipboard-updatedイベントをリッスンして履歴リストを即座に更新
     let unlistenClipboardUpdated: (() => void) | null = null;
-    let unlistenTrayEvents: (() => void) | null = null;
     let unlistenNavigationEvents: (() => void) | null = null;
 
     const setupDirectEventListener = async () => {
@@ -124,7 +123,13 @@ export default function Home() {
           console.log("⚙️ トレイから設定画面遷移要求を受信");
           navigate("/settings");
         });
-        
+
+        // アバウトページナビゲーションイベント
+        await listen("tray-navigate-about", () => {
+          console.log("ℹ️ トレイからアバウト画面遷移要求を受信");
+          navigate("/about");
+        });
+
         console.log("✅ ナビゲーションイベントリスナー設定完了");
       } catch (err) {
         console.error("❌ ナビゲーションイベントリスナー設定エラー:", err);
@@ -160,9 +165,6 @@ export default function Home() {
       clearTimeout(timer);
       if (unlistenClipboardUpdated) {
         unlistenClipboardUpdated();
-      }
-      if (unlistenTrayEvents) {
-        unlistenTrayEvents();
       }
       if (unlistenNavigationEvents) {
         unlistenNavigationEvents();

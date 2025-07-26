@@ -1,9 +1,12 @@
 [package]
 name = "clip-one"
 version = "0.2.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "ClipOne - クリップボード履歴管理アプリケーション"
+authors = ["masinc"]
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/masinc/clip-one"
+homepage = "https://github.com/masinc/clip-one"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
