@@ -1,7 +1,15 @@
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
-use tauri::{image::Image, menu::{Menu, MenuItem, PredefinedMenuItem}, tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}, Manager, WindowEvent, Emitter};
-use tokio::sync::Mutex;
 use image::GenericImageView;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+use tauri::{
+    image::Image,
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Emitter, Manager, WindowEvent,
+};
+use tokio::sync::Mutex;
 
 // ウィンドウの表示状態を管理
 static WINDOW_SHOULD_BE_VISIBLE: AtomicBool = AtomicBool::new(false);
@@ -15,40 +23,60 @@ use database::Database;
 /// システムトレイの設定
 fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // トレイメニューを作成
-    let show_hide = MenuItem::with_id(app, "toggle_window", "履歴の表示/非表示", true, None::<&str>)?;
+    let show_hide = MenuItem::with_id(
+        app,
+        "toggle_window",
+        "履歴の表示/非表示",
+        true,
+        None::<&str>,
+    )?;
     let separator1 = PredefinedMenuItem::separator(app)?;
     let settings = MenuItem::with_id(app, "settings", "設定", true, None::<&str>)?;
     let about = MenuItem::with_id(app, "about", "ClipOne について", true, None::<&str>)?;
     let separator2 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItem::with_id(app, "quit", "終了", true, None::<&str>)?;
-    
-    let menu = Menu::with_items(app, &[&show_hide, &separator1, &settings, &about, &separator2, &quit])?;
-    
+
+    let menu = Menu::with_items(
+        app,
+        &[
+            &show_hide,
+            &separator1,
+            &settings,
+            &about,
+            &separator2,
+            &quit,
+        ],
+    )?;
+
     // トレイアイコンを作成（既存の32x32アイコンを使用）
     let icon_bytes = include_bytes!("../icons/32x32.png");
     let img = image::load_from_memory(icon_bytes)?;
     let rgba = img.to_rgba8();
     let (width, height) = img.dimensions();
     let icon = Image::new_owned(rgba.into_raw(), width, height);
-    
+
     let _tray = TrayIconBuilder::with_id("main-tray")
-        .show_menu_on_left_click(false)  // 左クリックでメニューを表示しない
+        .show_menu_on_left_click(false) // 左クリックでメニューを表示しない
         .menu(&menu)
         .icon(icon)
         .tooltip("ClipOne - クリップボード履歴管理\n左クリック: 表示切り替え\n右クリック: メニュー")
         .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click { button: MouseButton::Left, button_state, .. } = event {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state,
+                ..
+            } = event
+            {
                 // Down状態のクリックのみ処理（Up状態は無視）
                 if button_state != MouseButtonState::Down {
                     return;
                 }
-                
-                
+
                 // 左クリック：ウィンドウの表示/非表示切り替え
                 if let Some(window) = tray.app_handle().get_webview_window("main") {
                     // 状態をatomicフラグで管理してパフォーマンス向上
                     let should_show = !WINDOW_SHOULD_BE_VISIBLE.load(Ordering::Relaxed);
-                    
+
                     if should_show {
                         WINDOW_SHOULD_BE_VISIBLE.store(true, Ordering::Relaxed);
                         let _ = window.show();
@@ -104,7 +132,7 @@ fn setup_system_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
             }
         })
         .build(app)?;
-    
+
     println!("✅ システムトレイが初期化されました");
     Ok(())
 }
@@ -118,9 +146,12 @@ fn setup_window_events(app: &tauri::App) {
                 // ウィンドウクローズ時は隠すだけ（終了しない）
                 // ただし、トレイから意図的に表示された直後の場合は隠さない
                 let should_be_visible = WINDOW_SHOULD_BE_VISIBLE.load(Ordering::Relaxed);
-                
-                println!("🚪 CloseRequested イベント受信, should_be_visible = {}", should_be_visible);
-                
+
+                println!(
+                    "🚪 CloseRequested イベント受信, should_be_visible = {}",
+                    should_be_visible
+                );
+
                 if should_be_visible {
                     // 意図的に表示された状態なので、クローズ処理をスキップ
                     println!("🔼 ウィンドウが意図的に表示されているため、クローズ処理をスキップ");
@@ -143,9 +174,13 @@ fn setup_window_events(app: &tauri::App) {
     }
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--minimized"]),
+        ))
+        .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // データベース接続を初期化（同期的に実行）
@@ -159,13 +194,13 @@ pub fn run() {
                     app.manage(db_state);
                     println!("データベース接続が正常に初期化されました");
                     println!("クリップボード監視はフロントエンドで開始されます");
-                    
+
                     // トレイアイコンとメニューの設定
                     setup_system_tray(app)?;
-                    
+
                     // ウィンドウクローズ時の処理設定
                     setup_window_events(app);
-                    
+
                     Ok(())
                 }
                 Err(e) => {
