@@ -1,6 +1,7 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { GlobalAction } from "@/contexts/ActionsContext";
 import type { ClipboardAction } from "@/types/clipboardActions";
+import { isUrlContent, mimeToCategory } from "@/utils/contentTypeMapper";
 import { getIconComponent } from "@/utils/iconMapping";
 
 /**
@@ -16,10 +17,20 @@ export function convertToClipboardAction(action: GlobalAction): ClipboardAction 
     priority: action.priority,
     keywords: action.keywords,
     condition: (content: string, type: string) => {
-      return (
-        action.allowedContentTypes.includes(type) ||
-        (action.allowedContentTypes.includes("url") && /^https?:\/\//.test(content))
-      );
+      // Convert MIME type to content category for comparison
+      const category = mimeToCategory(type);
+
+      // Check if action allows this content category
+      if (action.allowedContentTypes.includes(category)) {
+        return true;
+      }
+
+      // Enhanced URL detection: check both content pattern and MIME type
+      if (action.allowedContentTypes.includes("url") && isUrlContent(content, type)) {
+        return true;
+      }
+
+      return false;
     },
     execute: async (content: string, _navigate?: (path: string) => void, _itemId?: string) => {
       if (!action.enabled) return;

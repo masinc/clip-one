@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, useContext, useState } from "react";
+import type { ContentCategory } from "@/utils/contentTypeMapper";
 
 // アクション型定義
 export interface GlobalAction {
@@ -12,7 +13,7 @@ export interface GlobalAction {
   keywords: string[];
   isCustom: boolean;
   type: "url" | "command" | "code" | "built-in";
-  allowedContentTypes: string[];
+  allowedContentTypes: ContentCategory[];
 }
 
 interface ActionsContextType {
