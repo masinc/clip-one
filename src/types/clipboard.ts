@@ -48,30 +48,11 @@ export interface AppInfo {
   build_date: string; // ビルド日時
 }
 
-// アプリケーション設定の型定義（versionフィールドを削除）
+// アプリケーション設定の型定義（簡素化）
 export interface AppSettings {
-  auto_start: boolean;
   max_history_items: number;
   hotkeys: Record<string, string>;
   theme: string;
-  window: WindowSettings;
-  notifications: NotificationSettings;
-  database: DatabaseSettings;
   export_format: string;
-}
-
-export interface WindowSettings {
-  width: number;
-  height: number;
-  remember_position: boolean;
-}
-
-export interface NotificationSettings {
-  enabled: boolean;
-  show_on_copy: boolean;
-}
-
-export interface DatabaseSettings {
-  auto_cleanup: boolean;
-  cleanup_days: number;
+  notifications_enabled: boolean;
 }

@@ -1,21 +1,127 @@
+import { invoke } from "@tauri-apps/api/core";
 import { ArrowLeft, Database, Download, Eye, Monitor, Moon, RotateCcw, Sun, Trash2, Upload } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/contexts/ThemeContext";
+import type { AppSettings } from "@/types/clipboard";
+import { autostartApi } from "@/utils/plugins";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
-  const [autoStart, setAutoStart] = useState(true);
-  const [maxHistory, setMaxHistory] = useState("1000");
+
+  // 設定状態
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [autoStart, setAutoStart] = useState(false);
+  const [maxHistoryInput, setMaxHistoryInput] = useState("1000");
+  const [unlimitedHistory, setUnlimitedHistory] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
-  const [notifications, setNotifications] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // 設定を読み込み
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setLoading(true);
+
+        // アプリ設定を読み込み
+        const appSettings = await invoke<AppSettings>("get_app_settings");
+        setSettings(appSettings);
+        setMaxHistoryInput(appSettings.max_history_items.toString());
+        setUnlimitedHistory(appSettings.max_history_items === 0);
+
+        // OS自動起動状態を読み込み
+        const autostartEnabled = await autostartApi.isEnabled();
+        setAutoStart(autostartEnabled);
+
+        console.log("設定読み込み完了:", { appSettings, autostartEnabled });
+      } catch (error) {
+        console.error("設定読み込みエラー:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  // 自動起動設定の変更
+  const handleAutoStartChange = async (enabled: boolean) => {
+    try {
+      setSaving(true);
+      if (enabled) {
+        await autostartApi.enable();
+      } else {
+        await autostartApi.disable();
+      }
+      setAutoStart(enabled);
+      console.log("自動起動設定変更:", enabled);
+    } catch (error) {
+      console.error("自動起動設定エラー:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 表示件数設定の変更
+  const handleMaxHistoryChange = async () => {
+    if (!settings) return;
+
+    try {
+      setSaving(true);
+      const maxItems = unlimitedHistory ? 0 : parseInt(maxHistoryInput) || 1000;
+
+      await invoke("update_setting", {
+        key: "max_history_items",
+        value: maxItems,
+      });
+
+      setSettings((prev) => (prev ? { ...prev, max_history_items: maxItems } : null));
+      console.log("表示件数変更:", maxItems);
+    } catch (error) {
+      console.error("表示件数設定エラー:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 通知設定の変更
+  const handleNotificationsChange = async (enabled: boolean) => {
+    if (!settings) return;
+
+    try {
+      setSaving(true);
+      await invoke("update_setting", {
+        key: "notifications_enabled",
+        value: enabled,
+      });
+
+      setSettings((prev) => (prev ? { ...prev, notifications_enabled: enabled } : null));
+      console.log("通知設定変更:", enabled);
+    } catch (error) {
+      console.error("通知設定エラー:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg">設定を読み込み中...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,20 +198,36 @@ const Settings = () => {
 
             <Separator />
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label>表示件数</Label>
-              <Select value={maxHistory} onValueChange={setMaxHistory}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="100">100件</SelectItem>
-                  <SelectItem value="500">500件</SelectItem>
-                  <SelectItem value="1000">1000件</SelectItem>
-                  <SelectItem value="5000">5000件</SelectItem>
-                  <SelectItem value="unlimited">無制限</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center space-x-3">
+                <Switch
+                  checked={unlimitedHistory}
+                  onCheckedChange={(checked) => {
+                    setUnlimitedHistory(checked);
+                    if (checked) {
+                      handleMaxHistoryChange();
+                    }
+                  }}
+                  disabled={saving}
+                />
+                <Label className="text-sm">無制限</Label>
+              </div>
+              {!unlimitedHistory && (
+                <div className="flex items-center space-x-2">
+                  <Input
+                    type="number"
+                    value={maxHistoryInput}
+                    onChange={(e) => setMaxHistoryInput(e.target.value)}
+                    onBlur={handleMaxHistoryChange}
+                    min="1"
+                    max="10000"
+                    className="w-32"
+                    disabled={saving}
+                  />
+                  <span className="text-sm text-muted-foreground">件</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -120,9 +242,11 @@ const Settings = () => {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>スタートアップ時に起動</Label>
-                <div className="text-sm text-muted-foreground">システム起動時に自動的にアプリを開始します</div>
+                <div className="text-sm text-muted-foreground">
+                  システム起動時に自動的にアプリを開始します（OS設定と連携）
+                </div>
               </div>
-              <Switch checked={autoStart} onCheckedChange={setAutoStart} />
+              <Switch checked={autoStart} onCheckedChange={handleAutoStartChange} disabled={saving} />
             </div>
 
             <Separator />
@@ -132,7 +256,11 @@ const Settings = () => {
                 <Label>通知</Label>
                 <div className="text-sm text-muted-foreground">新しいクリップボード項目の通知を表示します</div>
               </div>
-              <Switch checked={notifications} onCheckedChange={setNotifications} />
+              <Switch
+                checked={settings?.notifications_enabled ?? false}
+                onCheckedChange={handleNotificationsChange}
+                disabled={saving}
+              />
             </div>
           </CardContent>
         </Card>
