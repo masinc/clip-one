@@ -1,6 +1,12 @@
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import {
+  backendToFrontend,
+  frontendToBackend,
+  getActions,
+  resetActions as resetActionsBackend,
+  saveActions as saveActionsBackend,
+} from "@/types/actionsApi";
 import type { ContentCategory } from "@/utils/contentTypeMapper";
-import { backendToFrontend, frontendToBackend, getActions, saveActions as saveActionsBackend, resetActions as resetActionsBackend } from "@/types/actionsApi";
 
 // アクション型定義
 export interface GlobalAction {
