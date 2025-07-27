@@ -3,6 +3,22 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+/// グローバルアクションの構造体
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GlobalAction {
+    pub id: String,
+    pub label: String,
+    pub command: Option<String>,
+    pub description: Option<String>,
+    pub icon: String,
+    pub enabled: bool,
+    pub priority: i32,
+    pub keywords: Vec<String>,
+    pub is_custom: bool,
+    pub action_type: String, // "url", "command", "code", "built-in"
+    pub allowed_content_types: Vec<String>, // "text", "url", "html", "image", "files"
+}
+
 /// アプリケーション情報の構造体
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppInfo {
@@ -143,6 +159,146 @@ impl AppSettings {
     }
 }
 
+impl GlobalAction {
+    /// アクション設定ファイルのパスを取得
+    fn get_actions_path() -> Result<PathBuf> {
+        let current_dir = std::env::current_dir()?;
+        let app_dir = current_dir.join("data");
+        Ok(app_dir.join("actions.json"))
+    }
+
+    /// デフォルトアクションを取得（フロントエンドと同じ内容）
+    fn get_default_actions() -> Vec<Self> {
+        vec![
+            // 基本アクション
+            Self {
+                id: "copy".to_string(),
+                label: "クリップボードにコピー".to_string(),
+                command: None,
+                description: None,
+                icon: "Copy".to_string(),
+                enabled: true,
+                priority: 1,
+                keywords: vec!["copy".to_string(), "コピー".to_string(), "clipboard".to_string()],
+                is_custom: false,
+                action_type: "built-in".to_string(),
+                allowed_content_types: vec!["text".to_string(), "url".to_string(), "html".to_string(), "image".to_string(), "files".to_string()],
+            },
+            Self {
+                id: "search".to_string(),
+                label: "Web検索".to_string(),
+                command: Some("https://www.google.com/search?q=CONTENT".to_string()),
+                description: None,
+                icon: "Search".to_string(),
+                enabled: true,
+                priority: 2,
+                keywords: vec!["search".to_string(), "検索".to_string(), "google".to_string(), "web".to_string()],
+                is_custom: true,
+                action_type: "url".to_string(),
+                allowed_content_types: vec!["text".to_string(), "url".to_string()],
+            },
+            Self {
+                id: "translate".to_string(),
+                label: "翻訳".to_string(),
+                command: Some("https://translate.google.com/?text=CONTENT".to_string()),
+                description: None,
+                icon: "Languages".to_string(),
+                enabled: true,
+                priority: 3,
+                keywords: vec!["translate".to_string(), "翻訳".to_string(), "language".to_string(), "言語".to_string()],
+                is_custom: true,
+                action_type: "url".to_string(),
+                allowed_content_types: vec!["text".to_string()],
+            },
+            // AI関連
+            Self {
+                id: "chatgpt".to_string(),
+                label: "ChatGPTに送信".to_string(),
+                command: Some("https://chat.openai.com/?q=CONTENT".to_string()),
+                description: None,
+                icon: "Bot".to_string(),
+                enabled: true,
+                priority: 4,
+                keywords: vec!["chatgpt".to_string(), "ai".to_string(), "gpt".to_string(), "openai".to_string(), "人工知能".to_string()],
+                is_custom: true,
+                action_type: "url".to_string(),
+                allowed_content_types: vec!["text".to_string()],
+            },
+            Self {
+                id: "claude".to_string(),
+                label: "Claudeに送信".to_string(),
+                command: Some("https://claude.ai/?q=CONTENT".to_string()),
+                description: None,
+                icon: "Brain".to_string(),
+                enabled: true,
+                priority: 5,
+                keywords: vec!["claude".to_string(), "ai".to_string(), "anthropic".to_string(), "人工知能".to_string()],
+                is_custom: true,
+                action_type: "url".to_string(),
+                allowed_content_types: vec!["text".to_string()],
+            },
+            Self {
+                id: "summarize".to_string(),
+                label: "AI要約".to_string(),
+                command: None,
+                description: Some("AIによるテキスト要約（未実装）".to_string()),
+                icon: "Sparkles".to_string(),
+                enabled: false,
+                priority: 6,
+                keywords: vec!["summarize".to_string(), "要約".to_string(), "summary".to_string(), "ai".to_string()],
+                is_custom: true,
+                action_type: "built-in".to_string(),
+                allowed_content_types: vec!["text".to_string()],
+            },
+            // Web・URL関連
+            Self {
+                id: "open-url".to_string(),
+                label: "URLを開く".to_string(),
+                command: None,
+                description: None,
+                icon: "ExternalLink".to_string(),
+                enabled: true,
+                priority: 2,
+                keywords: vec!["url".to_string(), "open".to_string(), "開く".to_string(), "link".to_string(), "リンク".to_string()],
+                is_custom: true,
+                action_type: "built-in".to_string(),
+                allowed_content_types: vec!["url".to_string()],
+            },
+        ]
+    }
+
+    /// アクション設定を読み込み
+    pub async fn load_actions() -> Result<Vec<Self>> {
+        let actions_path = Self::get_actions_path()?;
+
+        if !actions_path.exists() {
+            // ファイルが存在しない場合はデフォルトアクションを保存
+            let default_actions = Self::get_default_actions();
+            Self::save_actions(&default_actions).await?;
+            return Ok(default_actions);
+        }
+
+        let content = tokio::fs::read_to_string(&actions_path).await?;
+        let actions: Vec<Self> = serde_json::from_str(&content)?;
+        Ok(actions)
+    }
+
+    /// アクション設定を保存
+    pub async fn save_actions(actions: &[Self]) -> Result<()> {
+        let actions_path = Self::get_actions_path()?;
+
+        // ディレクトリを作成
+        if let Some(parent) = actions_path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+
+        let content = serde_json::to_string_pretty(actions)?;
+        tokio::fs::write(&actions_path, content).await?;
+
+        Ok(())
+    }
+}
+
 /// アプリケーション設定を取得
 #[tauri::command]
 pub async fn get_app_settings() -> Result<AppSettings, String> {
@@ -243,4 +399,31 @@ pub async fn get_app_info() -> Result<AppInfo, String> {
         homepage,
         build_date,
     })
+}
+
+/// アクション設定を取得
+#[tauri::command]
+pub async fn get_actions() -> Result<Vec<GlobalAction>, String> {
+    GlobalAction::load_actions()
+        .await
+        .map_err(|e| format!("アクション読み込みエラー: {}", e))
+}
+
+/// アクション設定を保存
+#[tauri::command]
+pub async fn save_actions(actions: Vec<GlobalAction>) -> Result<(), String> {
+    GlobalAction::save_actions(&actions)
+        .await
+        .map_err(|e| format!("アクション保存エラー: {}", e))
+}
+
+/// アクション設定をデフォルトにリセット
+#[tauri::command]
+pub async fn reset_actions() -> Result<Vec<GlobalAction>, String> {
+    let default_actions = GlobalAction::get_default_actions();
+    GlobalAction::save_actions(&default_actions)
+        .await
+        .map_err(|e| format!("アクションリセットエラー: {}", e))?;
+
+    Ok(default_actions)
 }
