@@ -1,5 +1,6 @@
-import { createContext, type ReactNode, useContext, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import type { ContentCategory } from "@/utils/contentTypeMapper";
+import { backendToFrontend, frontendToBackend, getActions, saveActions as saveActionsBackend, resetActions as resetActionsBackend } from "@/types/actionsApi";
 
 // アクション型定義
 export interface GlobalAction {
@@ -18,13 +19,14 @@ export interface GlobalAction {
 
 interface ActionsContextType {
   actions: GlobalAction[];
+  isLoading: boolean;
   setActions: (actions: GlobalAction[]) => void;
-  updateAction: (action: GlobalAction) => void;
-  deleteAction: (id: string) => void;
-  addAction: (action: GlobalAction) => void;
-  toggleAction: (id: string) => void;
-  resetToDefaults: () => void;
-  reorderActions: (activeId: string, overId: string) => void;
+  updateAction: (action: GlobalAction) => Promise<void>;
+  deleteAction: (id: string) => Promise<void>;
+  addAction: (action: GlobalAction) => Promise<void>;
+  toggleAction: (id: string) => Promise<void>;
+  resetToDefaults: () => Promise<void>;
+  reorderActions: (activeId: string, overId: string) => Promise<void>;
 }
 
 const ActionsContext = createContext<ActionsContextType | undefined>(undefined);
@@ -266,53 +268,101 @@ const defaultActions: GlobalAction[] = [
 
 export function ActionsProvider({ children }: { children: ReactNode }) {
   const [actions, setActions] = useState<GlobalAction[]>(defaultActions);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const updateAction = (updatedAction: GlobalAction) => {
-    setActions((prevActions) => prevActions.map((action) => (action.id === updatedAction.id ? updatedAction : action)));
+  // 起動時にバックエンドからアクション設定を読み込み
+  useEffect(() => {
+    const loadActionsFromBackend = async () => {
+      try {
+        const backendActions = await getActions();
+        const frontendActions = backendActions.map(backendToFrontend);
+        setActions(frontendActions);
+        console.log("✅ アクション設定をバックエンドから読み込み完了:", frontendActions.length, "件");
+      } catch (error) {
+        console.error("❌ アクション設定読み込みエラー:", error);
+        console.log("⚠️ デフォルトアクションを使用します");
+        setActions(defaultActions);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadActionsFromBackend();
+  }, []);
+
+  // アクションをバックエンドに保存する共通関数
+  const saveActionsToBackend = async (updatedActions: GlobalAction[]) => {
+    try {
+      const backendActions = updatedActions.map(frontendToBackend);
+      await saveActionsBackend(backendActions);
+      console.log("✅ アクション設定をバックエンドに保存完了");
+    } catch (error) {
+      console.error("❌ アクション設定保存エラー:", error);
+    }
   };
 
-  const deleteAction = (id: string) => {
-    setActions((prevActions) => prevActions.filter((action) => action.id !== id));
+  const updateAction = async (updatedAction: GlobalAction) => {
+    const newActions = actions.map((action) => (action.id === updatedAction.id ? updatedAction : action));
+    setActions(newActions);
+    await saveActionsToBackend(newActions);
   };
 
-  const addAction = (newAction: GlobalAction) => {
-    setActions((prevActions) => [...prevActions, newAction]);
+  const deleteAction = async (id: string) => {
+    const newActions = actions.filter((action) => action.id !== id);
+    setActions(newActions);
+    await saveActionsToBackend(newActions);
   };
 
-  const toggleAction = (id: string) => {
-    setActions((prevActions) =>
-      prevActions.map((action) => (action.id === id ? { ...action, enabled: !action.enabled } : action)),
-    );
+  const addAction = async (newAction: GlobalAction) => {
+    const newActions = [...actions, newAction];
+    setActions(newActions);
+    await saveActionsToBackend(newActions);
   };
 
-  const resetToDefaults = () => {
-    setActions([...defaultActions]);
+  const toggleAction = async (id: string) => {
+    const newActions = actions.map((action) => (action.id === id ? { ...action, enabled: !action.enabled } : action));
+    setActions(newActions);
+    await saveActionsToBackend(newActions);
   };
 
-  const reorderActions = (activeId: string, overId: string) => {
-    setActions((prevActions) => {
-      const oldIndex = prevActions.findIndex((action) => action.id === activeId);
-      const newIndex = prevActions.findIndex((action) => action.id === overId);
+  const resetToDefaults = async () => {
+    try {
+      const backendActions = await resetActionsBackend();
+      const frontendActions = backendActions.map(backendToFrontend);
+      setActions(frontendActions);
+      console.log("✅ アクション設定をデフォルトにリセット完了");
+    } catch (error) {
+      console.error("❌ アクションリセットエラー:", error);
+      setActions([...defaultActions]);
+    }
+  };
 
-      if (oldIndex === -1 || newIndex === -1) return prevActions;
+  const reorderActions = async (activeId: string, overId: string) => {
+    const oldIndex = actions.findIndex((action) => action.id === activeId);
+    const newIndex = actions.findIndex((action) => action.id === overId);
 
-      // アクションを並び替え
-      const reorderedActions = [...prevActions];
-      const [movedAction] = reorderedActions.splice(oldIndex, 1);
-      reorderedActions.splice(newIndex, 0, movedAction);
+    if (oldIndex === -1 || newIndex === -1) return;
 
-      // 優先度を更新（1から開始）
-      return reorderedActions.map((action, index) => ({
-        ...action,
-        priority: index + 1,
-      }));
-    });
+    // アクションを並び替え
+    const reorderedActions = [...actions];
+    const [movedAction] = reorderedActions.splice(oldIndex, 1);
+    reorderedActions.splice(newIndex, 0, movedAction);
+
+    // 優先度を更新（1から開始）
+    const newActions = reorderedActions.map((action, index) => ({
+      ...action,
+      priority: index + 1,
+    }));
+
+    setActions(newActions);
+    await saveActionsToBackend(newActions);
   };
 
   return (
     <ActionsContext.Provider
       value={{
         actions,
+        isLoading,
         setActions,
         updateAction,
         deleteAction,

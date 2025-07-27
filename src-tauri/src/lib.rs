@@ -239,6 +239,10 @@ pub fn run() {
             save_app_settings,
             update_setting,
             reset_settings,
+            // アクション管理
+            get_actions,
+            save_actions,
+            reset_actions,
             // アプリ情報
             get_app_info,
             // エクスポート/インポート
